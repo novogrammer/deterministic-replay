@@ -35,8 +35,15 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
   &__eyebrow { margin: 0 0 8px; font-size: 9px; letter-spacing: 0.16em; color: #8a9296; }
   &__title { margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -0.04em; }
   &__badge { font-size: 9px; letter-spacing: 0.12em; color: #b7c2b6; border: 1px solid #3d4940; padding: 6px 10px; border-radius: 20px; }
-  &__stage { display: flex; justify-content: center; background: #171a1c; border: 1px solid #2b3033; border-radius: 3px; overflow: hidden; }
-  &__canvas { display: block; width: min(100%, var(--output-size, 1024px), 64vh); height: auto; aspect-ratio: 1; }
+  &__stage { width: fit-content; max-width: 100%; margin-inline: auto; }
+  &__canvas {
+    display: block;
+    width: min(var(--output-size, 1024px), 64vh);
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    box-shadow: 0 0 0 1px #465054, 0 14px 40px rgb(0 0 0 / 35%);
+  }
 }
 
 .playback {
@@ -117,7 +124,7 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
     &__footer { flex-direction: column; }
   }
   .workspace { display: flex; flex-direction: column; gap: 34px; padding-top: 26px; }
-  .preview__canvas { width: min(100%, var(--output-size, 1024px)); }
+  .preview__canvas { width: var(--output-size, 1024px); }
   .panel__intro { padding-bottom: 24px; }
   .panel__title { font-size: 24px; }
 }
