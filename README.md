@@ -25,3 +25,5 @@ npm run preview
 Viteのルートは`src/`で、HTMLエントリーは`src/index.html`。静的アセットはリポジトリ直下の`public/`、ビルド出力はリポジトリ直下の`dist/`を使う。各パスは`import.meta.url`を基準に絶対パスへ解決する。ビルド時は`emptyOutDir: true`で`dist/`の既存の出力ファイルを削除してから生成する。
 
 SCSSのUIクラス命名はBEM（`block`、`block__element`、`block--modifier`）を使う。リセット用には`body`などの要素セレクタを使う。HTMLノードは`src/index.html`に記述し、JavaScriptで追加しない。JavaScriptは既存ノードの参照、イベント登録、表示状態や値の更新を担当する。描画用canvasもHTMLに用意してレンダラーへ渡す。
+
+TypeScriptはクラスベースを基本とし、状態やリソースをクラスで管理する。計算・変換などには関数も使う。プレビューと動画出力は、時刻を指定して姿勢・カメラを更新し描画する共通処理を呼び出す。
