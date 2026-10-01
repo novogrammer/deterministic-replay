@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>座標グリッドと放物線上のボール</title>
+  <rect width="1024" height="1024" fill="#F5F5F2"/>
+  <g fill="none" stroke="#8FA6C0" stroke-width="22">
+    <path d="M0 0V1024M128 0V1024M256 0V1024M384 0V1024M640 0V1024M768 0V1024M896 0V1024M1024 0V1024"/>
+    <path d="M0 0H1024M0 128H1024M0 256H1024M0 384H1024M0 512H1024M0 640H1024M0 896H1024M0 1024H1024"/>
+  </g>
+  <path d="M512 0V1024M0 768H1024" fill="none" stroke="#172B4D" stroke-width="28"/>
+  <path d="M180 768Q512 -248 844 768" fill="none" stroke="#F1714D" stroke-width="42" stroke-linecap="round"/>
+  <circle cx="844" cy="768" r="94" fill="#F4C542" stroke="#172B4D" stroke-width="12"/>
+</svg>

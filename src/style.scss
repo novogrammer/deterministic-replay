@@ -22,7 +22,7 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
   padding: 0 52px;
   &__header { height: 94px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2d30; }
   &__brand { display: flex; gap: 12px; align-items: center; font-size: 13px; font-weight: 700; letter-spacing: 0.13em; text-decoration: none; color: inherit; }
-  &__mark { color: #e7a66b; font-size: 25px; }
+  &__mark { display: block; width: 28px; height: 28px; flex-shrink: 0; border-radius: 5px; }
   &__edition { font-size: 10px; letter-spacing: 0.2em; color: #82888b; }
   &__footer { padding: 26px 0 30px; display: flex; justify-content: space-between; gap: 16px; font-size: 10px; letter-spacing: 0.1em; color: #747b7f; border-top: 1px solid #2a2d30; }
 }

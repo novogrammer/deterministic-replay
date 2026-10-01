@@ -32,7 +32,7 @@ export class SceneRuntime {
 
   async init(): Promise<void> {
     await this.renderer.init()
-    const sample = await new TextureLoader().loadAsync(`${import.meta.env.BASE_URL}images/sample.svg`)
+    const sample = await new TextureLoader().loadAsync(`${import.meta.env.BASE_URL}images/replay-sample.svg`)
     this.setTexture(sample)
   }
 
