@@ -1,6 +1,5 @@
 import { Texture } from 'three/webgpu'
 import { SceneRegistry } from './scenes/SceneRegistry.ts'
-import { ReplayData } from './replay/ReplayData.ts'
 import { SceneRuntime } from './player/SceneRuntime.ts'
 import { SessionController } from './player/SessionController.ts'
 import type { PlaybackState } from './player/SessionController.ts'
@@ -67,14 +66,13 @@ export class App {
     this.setBusy(true)
     try {
       await this.session.update(async () => {
-        const definition = this.registry.get(id)
-        const replay = await ReplayData.load(definition)
-        this.runtime.loadScene(definition, replay)
-        element<HTMLElement>('#scene-title').textContent = definition.title
-        element<HTMLElement>('#sphere-count').textContent = String(definition.count)
+        const scene = await this.registry.create(id)
+        this.runtime.loadScene(scene)
+        element<HTMLElement>('#scene-title').textContent = scene.title
+        element<HTMLElement>('#sphere-count').textContent = String(scene.count)
         element<HTMLElement>('#duration').textContent = formatTime(this.runtime.duration)
       }, true)
-      this.status.textContent = '繰り返し再生 · 画像は端末内で処理されます'
+      this.status.textContent = this.runtime.baked ? '繰り返し再生 · 画像は端末内で処理されます' : '未ベイク · 単色でシミュレーションを表示しています'
       this.clearDownload()
       this.error.hidden = true
     } finally { this.setBusy(false) }
@@ -152,6 +150,7 @@ export class App {
   private setBusy(busy: boolean): void {
     this.busy = busy
     for (const node of document.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('[data-control]')) node.disabled = busy
+    this.finishButton.disabled = busy || !this.runtime.baked
     element<HTMLElement>('#workspace').setAttribute('aria-busy', String(busy))
   }
 

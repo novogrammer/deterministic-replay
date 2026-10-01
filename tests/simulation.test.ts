@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
-import { SquareTrayScene } from '../src/scenes/SquareTrayScene.ts'
+import { SquareTraySettings } from '../src/scenes/square-tray/SquareTraySettings.ts'
+import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
 import { SceneRegistry } from '../src/scenes/SceneRegistry.ts'
-import { settingsKey } from '../src/scenes/SceneDefinition.ts'
+import { settingsKey } from '../src/scenes/SceneData.ts'
 import { PhysicsSimulation } from '../src/simulation/PhysicsSimulation.ts'
 
 await PhysicsSimulation.ready
-const scene = new SquareTrayScene()
+const scene = new SquareTraySettings()
 
 test('reset reproduces intermediate poses and spawning without saved trajectory', () => {
   const simulation = new PhysicsSimulation(scene)
@@ -35,7 +35,7 @@ test('reset reproduces intermediate poses and spawning without saved trajectory'
 })
 
 test('forward simulation reaches baked final matrices on each replay', async () => {
-  const metadata = JSON.parse(await readFile(new URL('../public/scenes/square-tray/bake.json', import.meta.url), 'utf8'))
+  const metadata = bakeFile.bake
   assert.equal(metadata.settingsKey, settingsKey(scene))
   assert.equal(metadata.rapierVersion, RAPIER.version())
   assert.equal(metadata.sceneRevision, scene.revision)
@@ -64,11 +64,16 @@ test('forward simulation reaches baked final matrices on each replay', async () 
   } finally { simulation.dispose() }
 })
 
-test('scene registry supports independent scenes; physics changes invalidate settings', () => {
-  const secondScene = { ...scene, id: 'second-tray', seed: 1234 }
-  const registry = new SceneRegistry([scene, secondScene])
+test('scene registry uses independent factories; physics changes invalidate settings', async () => {
+  const original = new SceneRegistry().get('square-tray')
+  const registry = new SceneRegistry([original, { ...original, id: 'second-tray' }])
   assert.equal(registry.list().length, 2)
-  assert.equal(registry.get('second-tray'), secondScene)
-  assert.notEqual(settingsKey(scene), settingsKey(secondScene))
-  assert.throws(() => new SceneRegistry([scene, scene]), /Duplicate/)
+  const first = await registry.create('square-tray')
+  const second = await registry.create('second-tray')
+  try {
+    assert.notEqual(first.scene, second.scene)
+    assert.notEqual(first.world, second.world)
+    assert.notEqual(settingsKey(scene), settingsKey({ ...scene, seed: 1234 }))
+    assert.throws(() => new SceneRegistry([original, original]), /Duplicate/)
+  } finally { first.dispose(); second.dispose() }
 })

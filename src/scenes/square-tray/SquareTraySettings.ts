@@ -1,6 +1,6 @@
-import type { BoxDefinition, SceneDefinition } from './SceneDefinition.ts'
+import type { BoxDefinition, PhysicsSettings } from '../SceneData.ts'
 
-export class SquareTrayScene implements SceneDefinition {
+export class SquareTraySettings implements PhysicsSettings {
   readonly id = 'square-tray'
   readonly title = 'Square tray'
   readonly revision = 1

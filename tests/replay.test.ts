@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { ReplayData } from '../src/replay/ReplayData.ts'
-import type { BakeMetadata } from '../src/scenes/SceneDefinition.ts'
-import { SquareTrayScene } from '../src/scenes/SquareTrayScene.ts'
+import type { BakeMetadata } from '../src/scenes/SceneData.ts'
+import { SquareTraySettings } from '../src/scenes/square-tray/SquareTraySettings.ts'
+import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
 import { PhysicsSimulation } from '../src/simulation/PhysicsSimulation.ts'
 
-const scene = new SquareTrayScene()
-const metadata: BakeMetadata = JSON.parse(await readFile(new URL('../public/scenes/square-tray/bake.json', import.meta.url), 'utf8'))
+const scene = new SquareTraySettings()
+const metadata: BakeMetadata = bakeFile.bake
 
 for (const fps of [30, 60]) {
   test(`${fps}fps forward playback matches every physics sample and the baked end step`, async () => {

@@ -1,4 +1,5 @@
-export interface SceneDefinition {
+/** Internal settings for the tray physics, rather than a public scene contract. */
+export interface PhysicsSettings {
   readonly id: string
   readonly title: string
   readonly revision: number
@@ -36,7 +37,12 @@ export interface BakeMetadata {
   finalMatrices: number[]
 }
 
-export function settingsKey(scene: SceneDefinition): string {
+export interface BakeFile {
+  formatVersion: 1
+  bake: BakeMetadata | null
+}
+
+export function settingsKey(scene: PhysicsSettings): string {
   return JSON.stringify({
     revision: scene.revision, seed: scene.seed, count: scene.count,
     radius: scene.radius, width: scene.width, depth: scene.depth,

@@ -49,20 +49,22 @@ Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。
 
 | 型・クラス | 責務 |
 | --- | --- |
-| SceneDefinition | ID、revision、初期条件、容器、カメラ、保持時間の定義 |
-| SquareTrayScene | 一つ目のシーンの具体的な設定 |
-| SceneRegistry | シーンの登録、一覧、IDからの取得 |
-| PhysicsSimulation | 共通の物理World、投入、固定ステップ、初期状態へのリセット |
-| ReplayData | ベイク結果の検証、固定ステップでの前進、前後2姿勢の保持 |
-| SceneRuntime | 物理状態の前進・リセット、姿勢補間、TSL、描画。更新と描画を分ける |
+| SimulationScene | Three.jsのScene・カメラとRapierのWorldを所有するシーンの共通インターフェイス |
+| SquareTrayScene | 容器・球体・物理の構築、固定ステップ、リセット、補間、TSL、最終姿勢のベイク |
+| SceneRegistry | シーンのファクトリーとベイク出力先の登録、一覧、インスタンス生成 |
+| PhysicsSimulation | SquareTrayScene内部で使うWorld・投入・固定ステップ・リセットの実装 |
+| ReplayData | SquareTrayScene内部で使うベイク検証と前後2姿勢の保持。ファイル取得は行わない |
+| SceneRuntime | シーンの時間管理、step/reset/updateViewへの委譲、renderer・RenderTarget・画素読み出し |
 | PreviewPlayer | rAFの時計、再生・一時停止。描画や録画について知らない |
-| VideoRecorder | 完成したフレームの取得・エンコード、MP4生成。物理や時刻進行を制御しない |
+| VideoRecorder | 渡されたRGBAフレームのエンコード、MP4生成。物理や時刻進行を制御しない |
 | SessionController | モード切り替え、描画の排他制御、ループ、録画のフレーム時刻と進捗・キャンセル |
 | App | 静的HTMLの操作、シーン・画像・出力設定の変更 |
 
-シーン追加時は`SceneDefinition`を実装するクラスを作り、`SceneRegistry`へ登録し、`src/index.html`の選択肢を追加してベイクする。シーンごとに`public/scenes/<scene-id>/bake.json`を持つ。切り替え時には旧シーンのWorld、geometry、materialなどを解放し、選択したシーンの再生時刻を先頭へ戻す。画像と出力設定は共有する。
+シーン追加時は`SimulationScene`を実装するクラスを作り、生成ファクトリーを`SceneRegistry`へ登録し、`src/index.html`の選択肢を追加する。各シーンがThree.jsのSceneとRapierのWorldを構築・所有し、`step()`で固定時間刻みを進め、`reset()`で初期状態に戻す。描画用の補間は`updateView(alpha)`で行う。各シーンは自由に容器や投入方法を実装できる。
 
-現在の共通シミュレーションは上方からの球体投入を担当する。砂時計や別の投入方法に広げる際は、シーン定義と共通シミュレーションの責務を拡張する。
+一つ目の実装とベイクJSONは`src/scenes/square-tray/`に置く。JSONはクラスから直接importし、実行時にfetchしない。切り替え時には旧シーンのWorld、geometry、materialなどを解放し、選択したシーンの再生時刻を先頭へ戻す。画像と出力設定はRuntimeで共有する。
+
+未ベイクのJSONは`{"formatVersion":1,"bake":null}`とする。ダミーの最終Matrix4は作らない。この状態でもシーンを構築・ステップ更新・リセットでき、球体は単色で表示する。画像投影と「完成を見る」はベイク後に利用できる。未ベイク時のプレビューの計算区間には、そのシーンの最大ステップ数を使う。
 
 ## 開発時のベイク
 
@@ -71,7 +73,7 @@ npm run bake                 # 登録されている全シーン
 npm run bake -- square-tray  # 指定シーンのみ
 ```
 
-Node.js 22.6以降でTypeScriptを実行するローカルスクリプト。公開ページと同じ`PhysicsSimulation`を使い、固定シードと固定ステップで収束まで計算する。保存するのは次のデータのみ。
+Node.js 22.6以降でTypeScriptを実行するローカルスクリプト。未ベイク状態のシーンを生成し、その`bake()`を呼ぶ。公開ページと同じ内部の物理実装で、固定シードと固定ステップで収束まで計算する。保存済みデータが古くても再ベイクできる。JSONの`bake`へ結果を書き込み、次の読み込みで画像投影が有効になる。保存するのは次のデータのみ。
 
 - データ形式バージョン、シーンID、revision、設定識別情報、Rapierバージョン。
 - 球体数、タイムステップ、終了ステップ、収束状態、各球体の出現ステップ。
@@ -87,7 +89,7 @@ Node.js 22.6以降でTypeScriptを実行するローカルスクリプト。公�
 
 任意時刻へのseekと操作用タイムラインは設けない。操作は再生・一時停止・先頭から再開・完成を見る。
 
-`SceneRuntime.advance(deltaSeconds)`で時間を前へ進め、固定の物理ステップまで計算する。前後2ステップ分の位置とQuaternionだけを一時保持し、位置を線形補間、回転をslerpして現在のインスタンス行列へ反映する。`SceneRuntime.render()`はその状態を描画する。全時系列の姿勢配列や過去へ戻るための再計算は作らない。
+`SceneRuntime.advance(deltaSeconds)`で時間を前へ進め、固定の物理ステップまで計算する。各シーンの`step()`を必要な回数呼ぶ。シーン内部で前後2ステップ分の位置とQuaternionだけを一時保持し、位置を線形補間、回転をslerpして現在のインスタンス行列へ反映する。`SceneRuntime.render()`はその状態を描画する。全時系列の姿勢配列や過去へ戻るための再計算は作らない。
 
 先頭からの再開とループでは`reset()`でWorldと乱数を初期状態へ戻す。未出現の球体は描画しない。終了ステップ以降は物理計算を進めず、その姿勢で完成状態を保持する。1周期は落下・収束と保持区間の合計で、保持後に先頭へ戻るカットを許容する。
 

@@ -17,22 +17,24 @@ npm run build
 npm run preview
 ```
 
-`npm run bake`は登録済みシーンの最終姿勢とメタデータを`public/scenes/<scene-id>/bake.json`へ保存する。`npm run bake -- square-tray`で一つのシーンを指定できる。物理設定やRapierを変更したら再ベイクする。画像の差し替えでは不要。途中の軌道は保存しない。
+`npm run bake`は登録済みシーンの最終姿勢とメタデータを各シーンの`src/scenes/<scene-id>/bake.json`へ保存する。`npm run bake -- square-tray`で一つのシーンを指定できる。物理設定やRapierを変更したら再ベイクする。画像の差し替えでは不要。途中の軌道は保存しない。
 
 正方形のPNG・JPEG・WebPを選択して使用する。画像を選ぶ前はサンプルを表示する。1,024または512ピクセル四方、30または60fpsでH.264 / MP4を書き出せる。エンコードに対応するブラウザが必要。プレビューと出力は同じ`SceneRuntime`の順方向更新と描画を使い、`SessionController`が排他制御する。seekは設けない。録画後は先頭へ戻り、録画前の再生／一時停止状態を引き継ぐ。
 
 描画先は共通のRenderTargetで、プレビューはそのテクスチャを表示する。録画はRenderTargetから読み出したフレームごとのRGBAデータをMediabunnyへ渡す。
 
+未ベイクのJSONは`{"formatVersion":1,"bake":null}`を置く。単色でシミュレーションでき、画像投影と「完成を見る」はベイク後に有効になる。JSONはシーンから直接importする。
+
 ## 構成
 
-- `src/scenes/`: シーン定義と登録。一つ目は`SquareTrayScene`。
-- `src/simulation/`: ベイクとブラウザで共有する物理計算。
-- `src/replay/`: 最終データの検証と指定時刻までの再計算。
-- `src/player/`: SceneRuntimeの物理状態更新・描画、PreviewPlayerの時計、SessionControllerのモード制御。
-- `src/export/`: VideoRecorderによるフレーム取得・エンコードとMP4生成。
+- `src/scenes/`: シーンの実装とファクトリー登録。一つ目は`SquareTrayScene`で、Scene・World・InstancedMesh・TSLを所有する。
+- `src/simulation/`: シーン内部で使う物理計算。
+- `src/replay/`: シーン内部で使う最終データの検証と順方向の前後2姿勢の保持。
+- `src/player/`: SceneRuntimeの時間管理・共通描画、PreviewPlayerの時計、SessionControllerのモード制御。
+- `src/export/`: VideoRecorderによるRGBAフレームのエンコードとMP4生成。
 - `scripts/bake.ts`: 開発用ベイク。
 
-シーンを追加するときは定義クラスを`SceneRegistry`へ登録し、`src/index.html`の選択肢を追加してベイクする。詳しくは[設計書](docs/design.md)を参照。
+シーンを追加するときは`SimulationScene`を実装したクラスの生成ファクトリーを`SceneRegistry`へ登録し、`src/index.html`の選択肢を追加してベイクする。詳しくは[設計書](docs/design.md)を参照。
 
 Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。パスは`import.meta.url`から解決し、ビルドでは`emptyOutDir: true`で出力を更新する。UIのHTMLノードは`src/index.html`に記述し、JavaScriptで追加しない。SCSSはBEMを使用する。TypeScriptはクラスを基本とし、計算や変換には関数も使う。
 
