@@ -2,9 +2,11 @@
 
 正方形の画像を読み込み、球体が容器へ流れ込む順再生をループプレビュー・MP4として出力する静的Webアプリ。Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用する。
 
+公開ページ: [Deterministic replay](https://novogrammer.github.io/deterministic-replay/)
+
 シーンは平行投影・ライトなしと、透視投影・ライトありの2種類を切り替えられる。各シーンは`SimulationScene`と`SceneSettings`をimplementsする独立したクラスとして、構築処理・物理設定・ベイクJSONを持つ。継承関係は設けない。
 
-一つ目のシーンは、400個の球体を浅い正方形の容器へ流し込む「Square tray」。固定カメラから見た完成時に画像が揃う。最終姿勢だけを開発時にMatrix4としてベイクし、途中の動きは再生時にRapierで計算する。UVは最終Matrix4からTSLで求める。
+一つ目のシーンは、440個の球体を浅い正方形の容器へ流し込む「Square tray」。固定カメラから見た完成時に画像が揃う。最終姿勢だけを開発時にMatrix4としてベイクし、途中の動きは再生時にRapierで計算する。UVは最終Matrix4からTSLで求める。
 
 ## 開発
 
@@ -40,4 +42,4 @@ npm run preview
 
 Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。パスは`import.meta.url`から解決し、ビルドでは`emptyOutDir: true`で出力を更新する。UIのHTMLノードは`src/index.html`に記述し、JavaScriptで追加しない。SCSSはBEMを使用する。TypeScriptはクラスを基本とし、計算や変換には関数も使う。
 
-GitHub Pagesへの公開は未設定。公開先に応じてViteのbaseと配信手順を設定する。
+GitHub Pagesへの公開は[デプロイ用ワークフロー](.github/workflows/deploy.yaml)で行う。`main`へのpushまたは手動実行でビルドした`dist/`を公開する。公開ページのフッターから[GitHubリポジトリ](https://github.com/novogrammer/deterministic-replay)へ移動できる。

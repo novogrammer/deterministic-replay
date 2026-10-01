@@ -8,7 +8,7 @@
 
 各球体の最終姿勢だけを開発時にMatrix4としてベイクする。途中の動きやUVはベイクしない。公開ページでは同じ初期条件からRapierを固定ステップで進め、現在姿勢を計算する。最終姿勢へ強制移動したり、逆再生したりしない。
 
-Viteによる静的ページとして構成し、GitHub Pagesで配信する想定。画像の処理、物理計算、プレビュー、MP4生成はブラウザ内で完結する。
+Viteによる静的ページとして構成し、GitHub Pagesで配信する。画像の処理、物理計算、プレビュー、MP4生成はブラウザ内で完結する。
 
 ## 技術構成と実装方針
 
@@ -161,8 +161,8 @@ MP4はメモリ上で生成し、HTMLに用意したダウンロードリンク�
 
 ## 公開と今後の検討
 
-GitHub Pagesのリポジトリ配下へ公開する場合は、Viteのbaseを公開先に合わせる。静的ファイルの取得は`import.meta.env.BASE_URL`を使う。現在のRapier compatはWASMを同梱する。[Vite: Deploying a Static Site](https://vite.dev/guide/static-deploy.html)
+公開先は[GitHub Pages](https://novogrammer.github.io/deterministic-replay/)。Viteのbaseは`./`とし、静的ファイルの取得は`import.meta.env.BASE_URL`を使う。現在のRapier compatはWASMを同梱する。[Vite: Deploying a Static Site](https://vite.dev/guide/static-deploy.html)
 
-公開先、ビルド・配信手順は未設定。外部サービスの変更、デプロイ、pushは今回の実装に含めない。
+`.github/workflows/deploy.yaml`が`main`へのpushまたは手動実行でビルドし、`dist/`をGitHub Pagesへ公開する。READMEに公開ページへのリンクを置き、公開ページのフッターに[GitHubリポジトリ](https://github.com/novogrammer/deterministic-replay)へのテキストリンクを置く。
 
 今後は別の容器・投入方式、カメラ演出、Worker化、大きな出力の保存方法、対応ブラウザの範囲を検討する。非正方形の画像は現状拒否し、クロップは実装しない。
