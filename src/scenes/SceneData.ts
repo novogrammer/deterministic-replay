@@ -1,5 +1,5 @@
-/** Internal settings for the tray physics, rather than a public scene contract. */
-export interface PhysicsSettings {
+/** Settings implemented by each scene, used by physics and bake validation. */
+export interface SceneSettings {
   readonly id: string
   readonly title: string
   readonly revision: number
@@ -42,7 +42,7 @@ export interface BakeFile {
   bake: BakeMetadata | null
 }
 
-export function settingsKey(scene: PhysicsSettings): string {
+export function settingsKey(scene: SceneSettings): string {
   return JSON.stringify({
     revision: scene.revision, seed: scene.seed, count: scene.count,
     radius: scene.radius, width: scene.width, depth: scene.depth,

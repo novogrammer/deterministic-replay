@@ -66,7 +66,7 @@ Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。
 
 未ベイクのJSONは`{"formatVersion":1,"bake":null}`とする。ダミーの最終Matrix4は作らない。この状態でもシーンを構築・ステップ更新・リセットでき、球体は単色で表示する。画像投影と「完成を見る」はベイク後に利用できる。未ベイク時のプレビューの計算区間には、そのシーンの最大ステップ数を使う。
 
-`SquareTrayScene`と`SquareTrayPerspectiveScene`はそれぞれ`SimulationScene`を実装する独立したクラスで、継承関係を持たない。構築処理と設定クラスは各シーンのディレクトリに置く。透視投影版は専用の`src/scenes/square-tray-perspective/bake.json`をimportする。各シーンは独立したシーンIDとベイク出力先を持つ。現在は結果の最終Matrix4が同じ値になるが、その一致をシーン間の制約にはしない。ファイルは共有しない。固定したPerspectiveCamera、DirectionalLight、HemisphereLightとMeshStandardNodeMaterialを使う。画像UVはそのカメラの最終view-projectionから求める。平行投影版の法線による簡易陰影は従来どおり残し、透視投影版はライトで陰影を付ける。
+`SquareTrayScene`と`SquareTrayPerspectiveScene`はそれぞれ`SimulationScene`を実装する独立したクラスで、継承関係を持たない。各シーン自身が`SceneSettings`もimplementsし、物理設定をreadonlyフィールドとして持つ。構築処理と設定値は各シーンのディレクトリに置く。透視投影版は専用の`src/scenes/square-tray-perspective/bake.json`をimportする。各シーンは独立したシーンIDとベイク出力先を持つ。現在は結果の最終Matrix4が同じ値になるが、その一致をシーン間の制約にはしない。ファイルは共有しない。固定したPerspectiveCamera、DirectionalLight、HemisphereLightとMeshStandardNodeMaterialを使う。画像UVはそのカメラの最終view-projectionから求める。平行投影版の法線による簡易陰影は従来どおり残し、透視投影版はライトで陰影を付ける。
 
 ## 開発時のベイク
 

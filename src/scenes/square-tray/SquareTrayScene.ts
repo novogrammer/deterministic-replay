@@ -5,19 +5,41 @@ import {
   InstancedBufferAttribute, DynamicDrawUsage,
 } from 'three/webgpu'
 import { attribute, instancedBufferAttribute, mat4, normalView, texture, uniform, varying, vec4 } from 'three/tsl'
-import type { BakeFile, BakeMetadata } from '../SceneData.ts'
+import type { BakeFile, BakeMetadata, BoxDefinition, SceneSettings } from '../SceneData.ts'
 import { settingsKey } from '../SceneData.ts'
 import type { SimulationScene } from '../SimulationScene.ts'
 import { ReplayData } from '../../replay/ReplayData.ts'
-import { SquareTraySettings } from './SquareTraySettings.ts'
 import bakeData from './bake.json' with { type: 'json' }
 
-export class SquareTrayScene implements SimulationScene {
+export class SquareTrayScene implements SimulationScene, SceneSettings {
   readonly id: string = 'square-tray'
   readonly title: string = 'Square tray'
   readonly scene = new Scene()
   readonly camera = new OrthographicCamera(-4.7, 4.7, 4.7, -4.7, 0.1, 100)
-  private readonly settings = new SquareTraySettings()
+  readonly revision = 1
+  readonly seed = 20261002
+  readonly count = 400
+  readonly radius = 0.2
+  readonly width = 8
+  readonly depth = 0.44
+  readonly cameraHalfSize = 4.7
+  readonly timeStep = 1 / 60
+  readonly batchSize = 10
+  readonly spawnEverySteps = 10
+  readonly maxSteps = 1200
+  readonly holdSeconds = 2
+  readonly colliderBoxes: readonly BoxDefinition[] = [
+    { position: [0, -4.1, 0], halfSize: [4.2, 0.1, 0.6] },
+    { position: [-4.1, 2, 0], halfSize: [0.1, 10, 0.6] },
+    { position: [4.1, 2, 0], halfSize: [0.1, 10, 0.6] },
+    { position: [0, 2, -0.32], halfSize: [4.2, 10, 0.1] },
+    { position: [0, 2, 0.32], halfSize: [4.2, 10, 0.1] },
+  ]
+  readonly visibleBoxes: readonly BoxDefinition[] = [
+    { position: [0, -4.09, -0.04], halfSize: [4.14, 0.07, 0.295] },
+    { position: [-4.09, 0, -0.04], halfSize: [0.07, 4.07, 0.295] },
+    { position: [4.09, 0, -0.04], halfSize: [0.07, 4.07, 0.295] },
+  ]
   private readonly textureNode = texture(new Texture())
   private readonly content = new Group()
   private spheres!: InstancedMesh
@@ -26,28 +48,26 @@ export class SquareTrayScene implements SimulationScene {
   private readonly rotation = new Quaternion()
   private readonly nextRotation = new Quaternion()
   private readonly scale = new Vector3()
-  private readonly replay: ReplayData
+  private replay!: ReplayData
 
-  private constructor(replay: ReplayData) {
-    this.replay = replay
+  private constructor() {
     this.scene.background = new Color('#171a1c')
     this.camera.position.set(0, 0, 20)
     this.camera.lookAt(0, 0, 0)
     this.camera.updateMatrixWorld()
-    this.build()
   }
 
   static async create(data: BakeFile = bakeData as BakeFile): Promise<SquareTrayScene> {
     if (data.formatVersion !== 1) throw new Error('Unsupported bake file version.')
-    const replay = await ReplayData.fromBake(new SquareTraySettings(), data.bake)
-    try { return new SquareTrayScene(replay) }
-    catch (error) { replay.dispose(); throw error }
+    const scene = new SquareTrayScene()
+    try {
+      scene.replay = await ReplayData.fromBake(scene, data.bake)
+      scene.build()
+      return scene
+    } catch (error) { scene.dispose(); throw error }
   }
 
   get world(): RAPIER.World { return this.replay.simulation.world }
-  get count(): number { return this.settings.count }
-  get timeStep(): number { return this.settings.timeStep }
-  get holdSeconds(): number { return this.settings.holdSeconds }
   get motionDuration(): number { return this.replay.duration }
   get stepIndex(): number { return this.replay.stepIndex }
   get baked(): boolean { return this.replay.metadata !== null }
@@ -57,7 +77,7 @@ export class SquareTrayScene implements SimulationScene {
   reset(): void { this.replay.reset(); this.updateView(0) }
 
   private build(): void {
-    const definition = this.settings
+    const definition = this
     const half = definition.cameraHalfSize
     Object.assign(this.camera, { left: -half, right: half, top: half, bottom: -half })
     this.camera.updateProjectionMatrix()
@@ -139,7 +159,7 @@ export class SquareTrayScene implements SimulationScene {
         this.rotation.fromArray(previous, a + 3)
         this.nextRotation.fromArray(next, a + 3)
         this.rotation.slerp(this.nextRotation, alpha)
-        this.scale.setScalar(this.settings.radius)
+        this.scale.setScalar(this.radius)
         this.matrix.compose(this.position, this.rotation, this.scale)
         if (metadata && frame === metadata.endStep && this.matrix.elements.some((value, index) =>
           Math.abs(value - metadata.finalMatrices[id * 16 + index]) > 0.000002)) {
@@ -153,7 +173,7 @@ export class SquareTrayScene implements SimulationScene {
 
   bake(): BakeFile {
     const simulation = this.replay.simulation
-    const settings = this.settings
+    const settings = this
     simulation.reset()
     try {
       while (!simulation.settled && simulation.step < settings.maxSteps) simulation.advance()
@@ -178,7 +198,7 @@ export class SquareTrayScene implements SimulationScene {
   }
 
   dispose(): void {
-    this.replay.dispose()
+    this.replay?.dispose()
     const materials = new Set<MeshBasicNodeMaterial>()
     this.content.traverse(object => {
       if (object instanceof Mesh) {
@@ -187,7 +207,7 @@ export class SquareTrayScene implements SimulationScene {
       }
     })
     materials.forEach(material => material.dispose())
-    this.spheres.dispose()
+    this.spheres?.dispose()
     this.scene.clear()
   }
 }

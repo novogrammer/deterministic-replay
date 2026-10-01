@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { ReplayData } from '../src/replay/ReplayData.ts'
 import type { BakeMetadata } from '../src/scenes/SceneData.ts'
-import { SquareTraySettings } from '../src/scenes/square-tray/SquareTraySettings.ts'
+import { SquareTrayScene } from '../src/scenes/square-tray/SquareTrayScene.ts'
 import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
 import { PhysicsSimulation } from '../src/simulation/PhysicsSimulation.ts'
 
-const scene = new SquareTraySettings()
+const scene = await SquareTrayScene.create()
+after(() => scene.dispose())
 const metadata: BakeMetadata = bakeFile.bake
 
 for (const fps of [30, 60]) {

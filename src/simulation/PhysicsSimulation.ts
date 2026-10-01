@@ -1,5 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
-import type { PhysicsSettings } from '../scenes/SceneData.ts'
+import type { SceneSettings } from '../scenes/SceneData.ts'
 
 class SeededRandom {
   private state: number
@@ -14,14 +14,14 @@ class SeededRandom {
 
 export class PhysicsSimulation {
   static readonly ready = RAPIER.init()
-  readonly definition: PhysicsSettings
+  readonly definition: SceneSettings
   readonly spawnSteps: number[]
   world!: RAPIER.World
   private bodies: RAPIER.RigidBody[] = []
   private random!: SeededRandom
   step = 0
 
-  constructor(definition: PhysicsSettings) {
+  constructor(definition: SceneSettings) {
     this.definition = definition
     this.spawnSteps = Array.from({ length: definition.count }, (_, id) =>
       Math.floor(id / definition.batchSize) * definition.spawnEverySteps)

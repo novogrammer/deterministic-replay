@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
 import { settingsKey } from '../scenes/SceneData.ts'
-import type { BakeMetadata, PhysicsSettings } from '../scenes/SceneData.ts'
+import type { BakeMetadata, SceneSettings } from '../scenes/SceneData.ts'
 import { PhysicsSimulation } from '../simulation/PhysicsSimulation.ts'
 
 export class ReplayData {
@@ -13,7 +13,7 @@ export class ReplayData {
   readonly next: Float32Array
   private frame = 0
 
-  private constructor(scene: PhysicsSettings, metadata: BakeMetadata | null) {
+  private constructor(scene: SceneSettings, metadata: BakeMetadata | null) {
     this.metadata = metadata
     this.endStep = metadata?.endStep ?? scene.maxSteps
     this.duration = this.endStep * scene.timeStep
@@ -24,7 +24,7 @@ export class ReplayData {
     this.reset()
   }
 
-  static async fromBake(scene: PhysicsSettings, metadata: BakeMetadata | null): Promise<ReplayData> {
+  static async fromBake(scene: SceneSettings, metadata: BakeMetadata | null): Promise<ReplayData> {
     await PhysicsSimulation.ready
     if (metadata && (metadata.formatVersion !== 1 || metadata.sceneId !== scene.id
       || metadata.sceneRevision !== scene.revision || metadata.settingsKey !== settingsKey(scene)

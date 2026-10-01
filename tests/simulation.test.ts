@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
-import { SquareTraySettings } from '../src/scenes/square-tray/SquareTraySettings.ts'
+import { SquareTrayScene } from '../src/scenes/square-tray/SquareTrayScene.ts'
 import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
 import { SceneRegistry } from '../src/scenes/SceneRegistry.ts'
 import { settingsKey } from '../src/scenes/SceneData.ts'
 import { PhysicsSimulation } from '../src/simulation/PhysicsSimulation.ts'
 
 await PhysicsSimulation.ready
-const scene = new SquareTraySettings()
+const scene = await SquareTrayScene.create()
+after(() => scene.dispose())
 
 test('reset reproduces intermediate poses and spawning without saved trajectory', () => {
   const simulation = new PhysicsSimulation(scene)
