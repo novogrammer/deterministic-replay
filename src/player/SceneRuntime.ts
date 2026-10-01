@@ -2,11 +2,13 @@ import {
   BoxGeometry, Color, Group, InstancedMesh, Matrix4, Mesh, MeshBasicNodeMaterial,
   OrthographicCamera, Quaternion, Scene, SphereGeometry, SRGBColorSpace,
   Texture, TextureLoader, Vector3, WebGPURenderer, InstancedBufferAttribute,
-  NoToneMapping, DynamicDrawUsage,
+  NoToneMapping, DynamicDrawUsage, RenderTarget, UnsignedByteType, QuadMesh,
 } from 'three/webgpu'
-import { attribute, instancedBufferAttribute, mat4, normalView, texture, uniform, varying, vec4 } from 'three/tsl'
+import { attribute, instancedBufferAttribute, mat4, normalView, sRGBTransferEOTF, texture, uniform, varying, vec3, vec4 } from 'three/tsl'
 import type { SceneDefinition } from '../scenes/SceneDefinition.ts'
 import { ReplayData } from '../replay/ReplayData.ts'
+import { packRgbaRows } from '../rendering/PixelFrame.ts'
+import type { PixelFrame } from '../rendering/PixelFrame.ts'
 
 export class SceneRuntime {
   readonly renderer: WebGPURenderer
@@ -26,6 +28,10 @@ export class SceneRuntime {
   private readonly scale = new Vector3()
   private elapsed = 0
   private showingFinal = false
+  // The output pass writes sRGB bytes. An sRGB GPU attachment would encode them a second time.
+  private readonly frameTarget = new RenderTarget(1024, 1024, { type: UnsignedByteType })
+  private readonly displayMaterial = new MeshBasicNodeMaterial({ depthTest: false, depthWrite: false })
+  private readonly display = new QuadMesh(this.displayMaterial)
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -34,6 +40,8 @@ export class SceneRuntime {
     this.renderer.setSize(1024, 1024, false)
     this.renderer.outputColorSpace = SRGBColorSpace
     this.renderer.toneMapping = NoToneMapping
+    // Three's transfer-function types do not preserve the input's vec3 type.
+    this.displayMaterial.colorNode = sRGBTransferEOTF(texture(this.frameTarget.texture).rgb) as ReturnType<typeof vec3>
     this.scene.background = new Color('#171a1c')
     this.camera.position.set(0, 0, 20)
     this.camera.lookAt(0, 0, 0)
@@ -53,6 +61,7 @@ export class SceneRuntime {
   get time(): number { return this.elapsed }
 
   setOutputSize(size: number): void {
+    this.frameTarget.setSize(size, size)
     this.renderer.setSize(size, size, false)
     this.canvas.style.setProperty('--output-size', `${size}px`)
   }
@@ -176,10 +185,25 @@ export class SceneRuntime {
   }
 
   async render(): Promise<void> {
-    this.renderer.render(this.scene, this.camera)
-    // Capture must wait for this frame before CanvasSource snapshots the canvas.
+    // The retained output target uses the same output conversion/MSAA as the canvas.
+    this.renderer.setOutputRenderTarget(this.frameTarget)
+    try { this.renderer.render(this.scene, this.camera) }
+    finally {
+      // The renderer's output pass also changes the active render target.
+      this.renderer.setRenderTarget(null)
+      this.renderer.setOutputRenderTarget(null)
+    }
+    this.display.render(this.renderer)
     const backend = this.renderer.backend as typeof this.renderer.backend & { device?: GPUDevice }
     if (backend.device) await backend.device.queue.onSubmittedWorkDone()
+  }
+
+  async readFrame(): Promise<PixelFrame> {
+    const { width, height } = this.frameTarget
+    const pixels = await this.renderer.readRenderTargetPixelsAsync(this.frameTarget, 0, 0, width, height)
+    if (!(pixels instanceof Uint8Array)) throw new Error('Expected an RGBA8 render target.')
+    const backend = this.renderer.backend as typeof this.renderer.backend & { isWebGLBackend?: boolean }
+    return { width, height, pixels: packRgbaRows(pixels, width, height, backend.isWebGLBackend === true) }
   }
 
   private disposeContent(): void {
@@ -203,6 +227,8 @@ export class SceneRuntime {
   dispose(): void {
     this.disposeContent()
     this.currentTexture?.dispose()
+    this.frameTarget.dispose()
+    this.displayMaterial.dispose()
     this.renderer.dispose()
   }
 }

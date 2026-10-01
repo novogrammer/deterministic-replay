@@ -132,9 +132,11 @@ TSLの`positionLocal`はインスタンス描画で更新されるため、最�
 
 canvasは出力動画と同じ正方形の描画解像度にする。初期値は1,024 × 1,024、512 × 512も選択可能。`renderer.setPixelRatio(1)`と`renderer.setSize(size, size, false)`を使い、画面への縮小表示はCSSで行う。画面リサイズや端末のDPRでは描画バッファを変えない。
 
-Mediabunnyの`Output`、`Mp4OutputFormat`、`CanvasSource`を使い、H.264 / MP4、30または60fps、high品質で出力する。エンコード可否を先に確認し、未対応なら理由を表示する。[Media sources](https://mediabunny.dev/guide/media-sources)、[Writing media files](https://mediabunny.dev/guide/writing-media-files)
+Mediabunnyの`Output`、`Mp4OutputFormat`、`VideoSampleSource`を使い、H.264 / MP4、30または60fps、high品質で出力する。エンコード可否を先に確認し、未対応なら理由を表示する。[Media sources](https://mediabunny.dev/guide/media-sources)、[Writing media files](https://mediabunny.dev/guide/writing-media-files)
 
-出力フレーム数は`ceil(周期秒数 × FPS)`。各フレームの長さは`1 / FPS`。描画完了を待ってcanvasを取得し、`CanvasSource.add`を待って次のフレームへ進む。実時間の録画ではない。完成状態の保持区間を含む1周期を出力し、動画内には先頭へ戻るカットを入れない。
+プレビュー・録画ともに同じRGBA8/sRGBのRenderTargetへ描画し、そのテクスチャをcanvasに表示する。録画時は`readRenderTargetPixelsAsync`でCPUへ読み出し、行のパディングと上下方向を補正した独立したRGBAバッファを`VideoSample`として渡す。GPUからCPUへの転送コストは生じるが、canvasの描画バッファの寿命に依存せず、フレームの画素を確定させられる。PNG化やbase64化は行わない。
+
+出力フレーム数は`ceil(周期秒数 × FPS)`。各フレームの長さは`1 / FPS`。順方向更新、描画、画素の読み出し、`VideoSampleSource.add`を順に待って次のフレームへ進む。サンプルは追加完了後に閉じる。実時間の録画ではない。完成状態の保持区間を含む1周期を出力し、動画内には先頭へ戻るカットを入れない。
 
 MP4はメモリ上で生成し、HTMLに用意したダウンロードリンクから保存する。進捗表示とキャンセルに対応する。大きな画像・動画では画像、GPU、MP4バッファのメモリ消費を考慮する。
 

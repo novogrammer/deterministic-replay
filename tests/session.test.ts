@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { TestContext } from 'node:test'
 import { SessionController } from '../src/player/SessionController.ts'
+import type { PixelFrame } from '../src/rendering/PixelFrame.ts'
 import type { FrameRecorder, SessionRuntime } from '../src/player/SessionController.ts'
 
 function deferred() {
@@ -11,7 +12,7 @@ function deferred() {
 }
 
 class FakeRuntime implements SessionRuntime {
-  readonly canvas = {} as HTMLCanvasElement
+  readonly canvas = { width: 1, height: 1 } as HTMLCanvasElement
   duration = 0.1
   motionDuration = 0.08
   time = 0
@@ -29,6 +30,7 @@ class FakeRuntime implements SessionRuntime {
   }
   showFinal(): void { this.final = true }
   async render(): Promise<void> { this.draws.push(this.time); await this.draw() }
+  async readFrame(): Promise<PixelFrame> { return { width: 1, height: 1, pixels: new Uint8Array([0, 0, 0, 255]) } }
 }
 
 class FakeRecorder implements FrameRecorder {
@@ -37,7 +39,7 @@ class FakeRecorder implements FrameRecorder {
   aborts = 0
   add: () => Promise<void> = async () => {}
   start(): Promise<void> { this.starts++; return Promise.resolve() }
-  async addFrame(timestamp: number): Promise<void> { this.timestamps.push(timestamp); await this.add() }
+  async addFrame(_frame: PixelFrame, timestamp: number): Promise<void> { this.timestamps.push(timestamp); await this.add() }
   finish(): Promise<Blob> { return Promise.resolve(new Blob(['test'])) }
   abort(): Promise<void> { this.aborts++; return Promise.resolve() }
 }
@@ -168,5 +170,25 @@ test('preview wraps by resetting and advancing forward, with no renders while pa
   await settle()
   assert.equal(runtime.draws.length, count)
   assert.equal(callbacks.size, 0)
+  await session.dispose()
+})
+
+test('cancel waits for pixel readback and never submits the cancelled frame', async t => {
+  const { session, runtime, recorder } = setup(t)
+  const readback = deferred()
+  t.mock.method(runtime, 'readFrame', async () => {
+    await readback.promise
+    return { width: 1, height: 1, pixels: new Uint8Array(4) }
+  })
+  const recording = session.record(30, () => {})
+  const rejected = assert.rejects(recording, { name: 'AbortError' })
+  await settle()
+  assert.equal(runtime.draws.length, 1)
+  assert.equal(recorder.timestamps.length, 0)
+  session.cancelRecording()
+  readback.resolve()
+  await rejected
+  assert.equal(recorder.timestamps.length, 0)
+  assert.equal(runtime.time, 0)
   await session.dispose()
 })

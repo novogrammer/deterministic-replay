@@ -1,4 +1,5 @@
 import { PreviewPlayer } from './PreviewPlayer.ts'
+import type { PixelFrame } from '../rendering/PixelFrame.ts'
 
 export interface SessionRuntime {
   readonly canvas: HTMLCanvasElement
@@ -9,11 +10,12 @@ export interface SessionRuntime {
   advance(deltaSeconds: number): void
   showFinal(): void
   render(): Promise<void>
+  readFrame(): Promise<PixelFrame>
 }
 
 export interface FrameRecorder {
-  start(canvas: HTMLCanvasElement, fps: number): Promise<void>
-  addFrame(timestamp: number, duration: number): Promise<void>
+  start(width: number, height: number, fps: number): Promise<void>
+  addFrame(frame: PixelFrame, timestamp: number, duration: number): Promise<void>
   finish(): Promise<Blob>
   abort(): Promise<void>
 }
@@ -94,7 +96,7 @@ export class SessionController {
     try {
       this.runtime.reset()
       this.finalView = false
-      await this.recorder.start(this.runtime.canvas, fps)
+      await this.recorder.start(this.runtime.canvas.width, this.runtime.canvas.height, fps)
       const frameCount = Math.ceil(this.runtime.duration * fps)
       for (let frame = 0; frame < frameCount; frame++) {
         this.checkCancelled()
@@ -102,7 +104,9 @@ export class SessionController {
         this.runtime.advance(Math.max(0, timestamp - this.runtime.time))
         await this.runtime.render()
         this.checkCancelled()
-        await this.recorder.addFrame(timestamp, 1 / fps)
+        const pixels = await this.runtime.readFrame()
+        this.checkCancelled()
+        await this.recorder.addFrame(pixels, timestamp, 1 / fps)
         onProgress((frame + 1) / frameCount)
         if (frame % 8 === 0) await new Promise(resolve => setTimeout(resolve, 0))
       }

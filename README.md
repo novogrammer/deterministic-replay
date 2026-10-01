@@ -21,6 +21,8 @@ npm run preview
 
 正方形のPNG・JPEG・WebPを選択して使用する。画像を選ぶ前はサンプルを表示する。1,024または512ピクセル四方、30または60fpsでH.264 / MP4を書き出せる。エンコードに対応するブラウザが必要。プレビューと出力は同じ`SceneRuntime`の順方向更新と描画を使い、`SessionController`が排他制御する。seekは設けない。録画後は先頭へ戻り、録画前の再生／一時停止状態を引き継ぐ。
 
+描画先は共通のRenderTargetで、プレビューはそのテクスチャを表示する。録画はRenderTargetから読み出したフレームごとのRGBAデータをMediabunnyへ渡す。
+
 ## 構成
 
 - `src/scenes/`: シーン定義と登録。一つ目は`SquareTrayScene`。

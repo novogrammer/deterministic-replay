@@ -1,27 +1,33 @@
-import { BufferTarget, CanvasSource, Mp4OutputFormat, Output, Quality, canEncodeVideo } from 'mediabunny'
+import { BufferTarget, VideoSample, VideoSampleSource, Mp4OutputFormat, Output, Quality, canEncodeVideo } from 'mediabunny'
+import type { PixelFrame } from '../rendering/PixelFrame.ts'
 
 /** Encodes submitted frames. Frame times and scene updates belong to the session. */
 export class VideoRecorder {
   private output: Output | null = null
-  private source: CanvasSource | null = null
+  private source: VideoSampleSource | null = null
   private target: BufferTarget | null = null
 
-  async start(canvas: HTMLCanvasElement, fps: number): Promise<void> {
+  async start(width: number, height: number, fps: number): Promise<void> {
     if (this.output) throw new Error('Recording is already active.')
     const quality = new Quality('high')
-    if (!await canEncodeVideo('avc', { width: canvas.width, height: canvas.height, quality, frameRate: fps })) {
+    if (!await canEncodeVideo('avc', { width, height, quality, frameRate: fps })) {
       throw new Error('このブラウザは指定解像度のH.264書き出しに対応していません。別のブラウザまたは解像度をお試しください。')
     }
     this.target = new BufferTarget()
     this.output = new Output({ target: this.target, format: new Mp4OutputFormat({ fastStart: 'in-memory' }) })
-    this.source = new CanvasSource(canvas, { codec: 'avc', quality })
+    this.source = new VideoSampleSource({ codec: 'avc', quality })
     this.output.addVideoTrack(this.source, { frameRate: fps })
     await this.output.start()
   }
 
-  async addFrame(timestamp: number, duration: number): Promise<void> {
+  async addFrame(frame: PixelFrame, timestamp: number, duration: number): Promise<void> {
     if (!this.source) throw new Error('Recording has not started.')
-    await this.source.add(timestamp, duration)
+    const sample = new VideoSample(frame.pixels, {
+      format: 'RGBA', codedWidth: frame.width, codedHeight: frame.height, timestamp, duration,
+      colorSpace: { primaries: 'bt709', transfer: 'iec61966-2-1', matrix: 'rgb', fullRange: true },
+    })
+    try { await this.source.add(sample) }
+    finally { sample.close() }
   }
 
   async finish(): Promise<Blob> {
