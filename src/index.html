@@ -1,12 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>deterministic-replay</title>
+    <meta name="theme-color" content="#111315" />
+    <title>Deterministic replay — Square tray</title>
   </head>
   <body>
-    <div id="app" class="app"></div>
+    <div id="app" class="app">
+      <header class="app__header">
+        <a class="app__brand" href="./"><span class="app__mark" aria-hidden="true">◉</span> REPLAY LAB</a>
+        <span class="app__edition">PHYSICS / IMAGE / MOTION</span>
+      </header>
+      <main class="workspace" id="workspace" aria-busy="true">
+        <section class="preview" aria-labelledby="scene-title">
+          <div class="preview__heading">
+            <div><p class="preview__eyebrow">SCENE 01 · DETERMINISTIC REPLAY</p><h1 class="preview__title" id="scene-title">Square tray</h1></div>
+            <span class="preview__badge">LOOP</span>
+          </div>
+          <div class="preview__stage">
+            <canvas class="preview__canvas" id="preview" width="1024" height="1024" aria-label="球体が容器に降り積もり、最後に画像が揃うプレビュー"></canvas>
+          </div>
+          <div class="playback">
+            <div class="playback__row">
+              <button class="button button--subtle" id="play" data-control disabled>再生</button>
+              <button class="button button--quiet" id="restart" data-control disabled>最初から</button>
+              <button class="button button--quiet" id="finish" data-control disabled>完成を見る</button>
+              <span class="playback__time"><span id="current-time">0.0s</span> / <span id="duration">—</span></span>
+            </div>
+            <input class="playback__timeline" id="timeline" type="range" min="0" max="12" step="0.01" value="0" aria-label="再生位置" data-control disabled />
+          </div>
+        </section>
+        <aside class="panel" aria-label="シーンと動画の設定">
+          <div class="panel__intro"><span class="panel__number">01 /</span><h2 class="panel__title">ばらばらから、<br />ひとつのイメージへ。</h2><p class="panel__description">球体が降り積もると、<br />散らばった断片が画像になる。</p></div>
+          <div class="panel__section">
+            <label class="field__label" for="scene">シーン</label>
+            <select class="field__select" id="scene" data-control disabled><option value="square-tray">01 — Square tray</option></select>
+            <p class="panel__hint"><span id="sphere-count">400</span> spheres · 浅い正方形の容器</p>
+          </div>
+          <div class="panel__section">
+            <span class="field__label">画像</span>
+            <label class="upload" for="image"><span class="upload__icon" aria-hidden="true">＋</span><span class="upload__title">正方形の画像を選ぶ</span><span class="upload__hint">PNG / JPEG / WebP</span></label>
+            <input class="upload__input" id="image" type="file" accept="image/png,image/jpeg,image/webp" data-control disabled />
+            <p class="panel__hint" id="image-name">サンプル画像を使用中</p>
+          </div>
+          <div class="panel__section">
+            <div class="panel__fields">
+              <div class="field"><label class="field__label" for="resolution">解像度</label><select class="field__select" id="resolution" data-control disabled><option value="1024">1024 × 1024</option><option value="512">512 × 512</option></select></div>
+              <div class="field"><label class="field__label" for="fps">フレームレート</label><select class="field__select" id="fps" data-control disabled><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+            </div>
+            <button class="button button--primary" id="export" data-control disabled>MP4を書き出す <span aria-hidden="true">↗</span></button>
+            <progress class="panel__progress" id="progress" value="0" max="1" aria-label="動画出力の進捗" hidden></progress>
+            <button class="button button--quiet" id="cancel" hidden>書き出しをキャンセル</button>
+            <a class="button button--download" id="download" hidden>MP4をダウンロード ↓</a>
+          </div>
+          <p class="panel__status" id="status" role="status">シーンを準備しています…</p>
+          <p class="panel__error" id="error" role="alert" hidden></p>
+        </aside>
+      </main>
+      <footer class="app__footer"><span>同じ動き、何度でも。</span><span>BUILT WITH RAPIER / THREE.JS / MEDIABUNNY</span></footer>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

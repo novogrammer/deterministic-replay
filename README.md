@@ -1,29 +1,37 @@
 # deterministic-replay
 
-正方形の画像を読み込み、球体が容器へ流れ込む順再生の物理シミュレーションを、ループプレビューとMP4として楽しむ静的Webアプリ。
+正方形の画像を読み込み、球体が容器へ流れ込む順再生をループプレビュー・MP4として出力する静的Webアプリ。Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用する。
 
-初めは球体の表面に画像の断片が散らばって見え、球体が最終配置へ落ち着くと、完成時のカメラから元の画像が揃って見える。
-
-Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用し、GitHub Pagesで公開する予定。
-
-シーンごとの最終姿勢は開発時にMatrix4としてベイクして静的データとして持たせる。入力画像に依存しない姿勢データを再利用し、UVは描画時にTSLで計算する。
-
-## 設計
-
-[設計書](docs/design.md)に、確定事項、処理の流れ、投影UV、リプレイと動画出力の方針、未決定事項をまとめている。
-
-Vite＋TypeScriptの初期構成を準備済み。シミュレーション、描画、動画出力の実装と公開設定はまだ行っていない。
+一つ目のシーンは、400個の球体を浅い正方形の容器へ流し込む「Square tray」。固定カメラから見た完成時に画像が揃う。最終姿勢だけを開発時にMatrix4としてベイクし、途中の動きは再生時にRapierで計算する。UVは最終Matrix4からTSLで求める。
 
 ## 開発
 
+Node.js 22.6以降を使用する。
+
 ```sh
+npm install
 npm run dev
+npm run bake
+npm test
 npm run build
 npm run preview
 ```
 
-Viteのルートは`src/`で、HTMLエントリーは`src/index.html`。静的アセットはリポジトリ直下の`public/`、ビルド出力はリポジトリ直下の`dist/`を使う。各パスは`import.meta.url`を基準に絶対パスへ解決する。ビルド時は`emptyOutDir: true`で`dist/`の既存の出力ファイルを削除してから生成する。
+`npm run bake`は登録済みシーンの最終姿勢とメタデータを`public/scenes/<scene-id>/bake.json`へ保存する。`npm run bake -- square-tray`で一つのシーンを指定できる。物理設定やRapierを変更したら再ベイクする。画像の差し替えでは不要。途中の軌道は保存しない。
 
-SCSSのUIクラス命名はBEM（`block`、`block__element`、`block--modifier`）を使う。リセット用には`body`などの要素セレクタを使う。HTMLノードは`src/index.html`に記述し、JavaScriptで追加しない。JavaScriptは既存ノードの参照、イベント登録、表示状態や値の更新を担当する。描画用canvasもHTMLに用意してレンダラーへ渡す。
+正方形のPNG・JPEG・WebPを選択して使用する。画像を選ぶ前はサンプルを表示する。1,024または512ピクセル四方、30または60fpsでH.264 / MP4を書き出せる。エンコードに対応するブラウザが必要。プレビューと出力は同じ`ScenePlayer.renderAt(timeSeconds)`を使う。
 
-TypeScriptはクラスベースを基本とし、状態やリソースをクラスで管理する。計算・変換などには関数も使う。プレビューと動画出力は、時刻を指定して姿勢・カメラを更新し描画する共通処理を呼び出す。
+## 構成
+
+- `src/scenes/`: シーン定義と登録。一つ目は`SquareTrayScene`。
+- `src/simulation/`: ベイクとブラウザで共有する物理計算。
+- `src/replay/`: 最終データの検証と指定時刻までの再計算。
+- `src/player/`: InstancedMesh、TSL、共通描画とプレビュー制御。
+- `src/export/`: MediabunnyによるMP4生成。
+- `scripts/bake.ts`: 開発用ベイク。
+
+シーンを追加するときは定義クラスを`SceneRegistry`へ登録し、`src/index.html`の選択肢を追加してベイクする。詳しくは[設計書](docs/design.md)を参照。
+
+Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。パスは`import.meta.url`から解決し、ビルドでは`emptyOutDir: true`で出力を更新する。UIのHTMLノードは`src/index.html`に記述し、JavaScriptで追加しない。SCSSはBEMを使用する。TypeScriptはクラスを基本とし、計算や変換には関数も使う。
+
+GitHub Pagesへの公開は未設定。公開先に応じてViteのbaseと配信手順を設定する。
