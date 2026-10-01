@@ -14,7 +14,7 @@ import bakeData from './bake.json' with { type: 'json' }
 
 export class SquareTrayPerspectiveScene implements SimulationScene, SceneSettings {
   readonly id = 'square-tray-perspective'
-  readonly title = 'Square tray — Perspective'
+  readonly title = 'Square tray · 透視投影＋ライト'
   readonly scene = new Scene()
   readonly camera = new PerspectiveCamera(38, 1, 0.1, 100)
   readonly revision = 1

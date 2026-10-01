@@ -69,8 +69,8 @@ export class App {
         const scene = await this.registry.create(id)
         this.runtime.loadScene(scene)
         element<HTMLElement>('#scene-title').textContent = scene.title
+        document.title = `Deterministic replay — ${scene.title}`
         element<HTMLElement>('#scene-number').textContent = String(this.registry.list().findIndex(entry => entry.id === id) + 1).padStart(2, '0')
-        element<HTMLElement>('#sphere-count').textContent = String(scene.count)
         element<HTMLElement>('#duration').textContent = formatTime(this.runtime.duration)
       }, true)
       this.status.textContent = this.runtime.baked ? '繰り返し再生 · 画像は端末内で処理されます' : '未ベイク · 単色でシミュレーションを表示しています'

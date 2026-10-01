@@ -13,7 +13,7 @@ import bakeData from './bake.json' with { type: 'json' }
 
 export class SquareTrayScene implements SimulationScene, SceneSettings {
   readonly id: string = 'square-tray'
-  readonly title: string = 'Square tray'
+  readonly title: string = 'Square tray · 平行投影'
   readonly scene = new Scene()
   readonly camera = new OrthographicCamera(-4.7, 4.7, 4.7, -4.7, 0.1, 100)
   readonly revision = 1

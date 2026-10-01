@@ -6,11 +6,11 @@ export class SceneRegistry {
   private readonly entries = new Map<string, SceneEntry>()
 
   constructor(scenes: SceneEntry[] = [{
-    id: 'square-tray', title: 'Square tray',
+    id: 'square-tray', title: 'Square tray · 平行投影',
     bakePath: 'square-tray/bake.json',
     create: options => SquareTrayScene.create(options?.baked === false ? { formatVersion: 1, bake: null } : undefined),
   }, {
-    id: 'square-tray-perspective', title: 'Square tray — Perspective',
+    id: 'square-tray-perspective', title: 'Square tray · 透視投影＋ライト',
     bakePath: 'square-tray-perspective/bake.json',
     create: options => SquareTrayPerspectiveScene.create(options?.baked === false ? { formatVersion: 1, bake: null } : undefined),
   }]) {

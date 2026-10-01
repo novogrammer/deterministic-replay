@@ -5,19 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111315" />
     <link rel="icon" type="image/svg+xml" href="/images/replay.svg" />
-    <title>Deterministic replay — Square tray</title>
+    <title>Deterministic replay — Square tray · 平行投影</title>
   </head>
   <body>
     <div id="app" class="app">
       <header class="app__header">
         <a class="app__brand" href="./"><img class="app__mark" src="/images/replay.svg" width="28" height="28" alt="" aria-hidden="true" /> Deterministic replay</a>
-        <span class="app__edition">PHYSICS / IMAGE / MOTION</span>
       </header>
       <main class="workspace" id="workspace" aria-busy="true">
         <section class="preview" aria-labelledby="scene-title">
           <div class="preview__heading">
-            <div><p class="preview__eyebrow">SCENE <span id="scene-number">01</span> · DETERMINISTIC REPLAY</p><h1 class="preview__title" id="scene-title">Square tray</h1></div>
-            <span class="preview__badge">LOOP</span>
+            <div><p class="preview__eyebrow">SCENE <span id="scene-number">01</span></p><h1 class="preview__title" id="scene-title">Square tray · 平行投影</h1></div>
           </div>
           <div class="preview__stage">
             <canvas class="preview__canvas" id="preview" width="1024" height="1024" aria-label="球体が容器に降り積もり、最後に画像が揃うプレビュー"></canvas>
@@ -32,14 +30,13 @@
           </div>
         </section>
         <aside class="panel" aria-label="シーンと動画の設定">
-          <div class="panel__intro"><span class="panel__number">01 /</span><h2 class="panel__title">ばらばらから、<br />ひとつのイメージへ。</h2><p class="panel__description">球体が降り積もると、<br />散らばった断片が画像になる。</p></div>
+          <div class="panel__intro"><h2 class="panel__title">パーツが集まり、画像が完成します</h2></div>
           <div class="panel__section">
             <label class="field__label" for="scene">シーン</label>
             <select class="field__select" id="scene" data-control disabled>
-              <option value="square-tray">01 — Square tray · 平行投影</option>
-              <option value="square-tray-perspective">02 — Square tray · 透視投影＋ライト</option>
+              <option value="square-tray">Square tray · 平行投影</option>
+              <option value="square-tray-perspective">Square tray · 透視投影＋ライト</option>
             </select>
-            <p class="panel__hint"><span id="sphere-count">440</span> spheres · 浅い正方形の容器</p>
           </div>
           <div class="panel__section">
             <span class="field__label">画像</span>
@@ -62,7 +59,6 @@
         </aside>
       </main>
       <footer class="app__footer">
-        <span>同じ動き、何度でも。</span>
         <a class="app__repository" href="https://github.com/novogrammer/deterministic-replay">GitHub repository</a>
         <span>BUILT WITH RAPIER / THREE.JS / MEDIABUNNY</span>
       </footer>

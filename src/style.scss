@@ -23,7 +23,6 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
   &__header { height: 94px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2d30; }
   &__brand { display: flex; gap: 12px; align-items: center; font-size: 13px; font-weight: 700; letter-spacing: 0.13em; text-decoration: none; color: inherit; }
   &__mark { display: block; width: 28px; height: 28px; flex-shrink: 0; border-radius: 5px; }
-  &__edition { font-size: 10px; letter-spacing: 0.2em; color: #82888b; }
   &__footer { padding: 26px 0 30px; display: flex; justify-content: space-between; gap: 16px; font-size: 10px; letter-spacing: 0.1em; color: #747b7f; border-top: 1px solid #2a2d30; }
   &__repository { color: #a4abb0; text-underline-offset: 3px; }
   &__repository:hover { color: #edece6; }
@@ -36,7 +35,6 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
   &__heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
   &__eyebrow { margin: 0 0 8px; font-size: 9px; letter-spacing: 0.16em; color: #8a9296; }
   &__title { margin: 0; font-size: 30px; font-weight: 500; letter-spacing: -0.04em; }
-  &__badge { font-size: 9px; letter-spacing: 0.12em; color: #b7c2b6; border: 1px solid #3d4940; padding: 6px 10px; border-radius: 20px; }
   &__stage { width: fit-content; max-width: 100%; margin-inline: auto; }
   &__canvas {
     display: block;
@@ -77,9 +75,7 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
 .panel {
   padding-top: 6px;
   &__intro { padding-bottom: 25px; }
-  &__number { font-size: 10px; color: #e7a66b; letter-spacing: 0.15em; }
-  &__title { font-weight: 500; font-size: 24px; line-height: 1.6; letter-spacing: 0.01em; margin: 18px 0 14px; }
-  &__description { font-size: 12px; line-height: 1.9; color: #91999c; margin: 0; }
+  &__title { font-weight: 500; font-size: 16px; line-height: 1.6; letter-spacing: 0.01em; margin: 0; }
   &__section { border-top: 1px solid #2a2d30; padding: 21px 0; }
   &__hint { margin: 10px 0 0; font-size: 10px; color: #788286; overflow-wrap: anywhere; }
   &__fields { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
@@ -121,7 +117,6 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
   .app {
     padding: 0 20px;
     &__header { height: 70px; }
-    &__edition { display: none; }
     &__footer { flex-direction: column; }
   }
   .workspace { display: flex; flex-direction: column; gap: 34px; padding-top: 26px; }
