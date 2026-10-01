@@ -2,10 +2,17 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { InstancedMesh } from 'three/webgpu'
 import { SquareTrayScene } from '../src/scenes/square-tray/SquareTrayScene.ts'
+import type { SimulationScene } from '../src/scenes/SimulationScene.ts'
 import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
+import { SquareTrayPerspectiveScene } from '../src/scenes/square-tray-perspective/SquareTrayPerspectiveScene.ts'
+import perspectiveBakeFile from '../src/scenes/square-tray-perspective/bake.json' with { type: 'json' }
+import { DirectionalLight, HemisphereLight, MeshStandardNodeMaterial, PerspectiveCamera } from 'three/webgpu'
 
-function spheres(scene: SquareTrayScene): InstancedMesh {
-  return scene.scene.children[0].children.find(child => child instanceof InstancedMesh) as InstancedMesh
+function spheres(scene: SimulationScene): InstancedMesh {
+  let result: InstancedMesh | undefined
+  scene.scene.traverse(child => { if (child instanceof InstancedMesh) result = child })
+  assert.ok(result)
+  return result
 }
 
 test('unbaked scene constructs and resets without dummy final matrices; baking matches saved poses', async () => {
@@ -53,4 +60,24 @@ test('scene advances to baked poses and final view leaves the physics untouched'
     scene.step()
     assert.equal(scene.stepIndex, endStep)
   } finally { scene.dispose() }
+})
+
+test('perspective scene owns its construction and bake data', async () => {
+  const perspective = await SquareTrayPerspectiveScene.create()
+  try {
+    assert.ok(perspective.camera instanceof PerspectiveCamera)
+    assert.ok(spheres(perspective).material instanceof MeshStandardNodeMaterial)
+    assert.ok(perspective.scene.children.some(child => child instanceof DirectionalLight))
+    assert.ok(perspective.scene.children.some(child => child instanceof HemisphereLight))
+    for (let step = 0; step < 180; step++) perspective.step()
+    perspective.updateView(0.5)
+    const intermediate = spheres(perspective).instanceMatrix.array.slice()
+    perspective.reset()
+    for (let step = 0; step < 180; step++) perspective.step()
+    perspective.updateView(0.5)
+    assert.deepEqual(spheres(perspective).instanceMatrix.array, intermediate)
+    assert.deepEqual(perspective.bake(), perspectiveBakeFile)
+    assert.equal(perspectiveBakeFile.bake.sceneId, 'square-tray-perspective')
+    await assert.rejects(SquareTrayPerspectiveScene.create(bakeFile as Parameters<typeof SquareTrayPerspectiveScene.create>[0]), /一致しません/)
+  } finally { perspective.dispose() }
 })

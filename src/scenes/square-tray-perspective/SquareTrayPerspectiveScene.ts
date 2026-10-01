@@ -1,23 +1,24 @@
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
 import {
-  BoxGeometry, Color, Group, InstancedMesh, Matrix4, Mesh, MeshBasicNodeMaterial,
-  OrthographicCamera, Quaternion, Scene, SphereGeometry, Texture, Vector3,
-  InstancedBufferAttribute, DynamicDrawUsage,
+  BoxGeometry, Color, Group, InstancedMesh, Matrix4, Mesh,
+  Quaternion, Scene, SphereGeometry, Texture, Vector3,
+  InstancedBufferAttribute, DynamicDrawUsage, PerspectiveCamera, MeshStandardNodeMaterial,
+  HemisphereLight, DirectionalLight, Vector2,
 } from 'three/webgpu'
-import { attribute, instancedBufferAttribute, mat4, normalView, texture, uniform, varying, vec4 } from 'three/tsl'
+import { attribute, instancedBufferAttribute, mat4, texture, uniform, varying, vec4 } from 'three/tsl'
 import type { BakeFile, BakeMetadata } from '../SceneData.ts'
 import { settingsKey } from '../SceneData.ts'
 import type { SimulationScene } from '../SimulationScene.ts'
 import { ReplayData } from '../../replay/ReplayData.ts'
-import { SquareTraySettings } from './SquareTraySettings.ts'
+import { SquareTrayPerspectiveSettings } from './SquareTrayPerspectiveSettings.ts'
 import bakeData from './bake.json' with { type: 'json' }
 
-export class SquareTrayScene implements SimulationScene {
-  readonly id: string = 'square-tray'
-  readonly title: string = 'Square tray'
+export class SquareTrayPerspectiveScene implements SimulationScene {
+  readonly id = 'square-tray-perspective'
+  readonly title = 'Square tray — Perspective'
   readonly scene = new Scene()
-  readonly camera = new OrthographicCamera(-4.7, 4.7, 4.7, -4.7, 0.1, 100)
-  private readonly settings = new SquareTraySettings()
+  readonly camera = new PerspectiveCamera(38, 1, 0.1, 100)
+  private readonly settings = new SquareTrayPerspectiveSettings()
   private readonly textureNode = texture(new Texture())
   private readonly content = new Group()
   private spheres!: InstancedMesh
@@ -31,16 +32,19 @@ export class SquareTrayScene implements SimulationScene {
   private constructor(replay: ReplayData) {
     this.replay = replay
     this.scene.background = new Color('#171a1c')
-    this.camera.position.set(0, 0, 20)
+    this.camera.position.set(2.2, 2.4, 14)
     this.camera.lookAt(0, 0, 0)
     this.camera.updateMatrixWorld()
+    const key = new DirectionalLight('#fff2dd', 2.6)
+    key.position.set(-5, 7, 10)
+    this.scene.add(key, new HemisphereLight('#dce9ff', '#39434a', 1.5))
     this.build()
   }
 
-  static async create(data: BakeFile = bakeData as BakeFile): Promise<SquareTrayScene> {
+  static async create(data: BakeFile = bakeData as BakeFile): Promise<SquareTrayPerspectiveScene> {
     if (data.formatVersion !== 1) throw new Error('Unsupported bake file version.')
-    const replay = await ReplayData.fromBake(new SquareTraySettings(), data.bake)
-    try { return new SquareTrayScene(replay) }
+    const replay = await ReplayData.fromBake(new SquareTrayPerspectiveSettings(), data.bake)
+    try { return new SquareTrayPerspectiveScene(replay) }
     catch (error) { replay.dispose(); throw error }
   }
 
@@ -58,14 +62,12 @@ export class SquareTrayScene implements SimulationScene {
 
   private build(): void {
     const definition = this.settings
-    const half = definition.cameraHalfSize
-    Object.assign(this.camera, { left: -half, right: half, top: half, bottom: -half })
     this.camera.updateProjectionMatrix()
     this.camera.updateMatrixWorld()
     const finalViewProjection = this.camera.projectionMatrix.clone().multiply(this.camera.matrixWorldInverse)
 
     const geometry = new SphereGeometry(1, 20, 14)
-    const material = new MeshBasicNodeMaterial()
+    const material = new MeshStandardNodeMaterial({ roughness: 0.65, metalness: 0 })
     const metadata = this.replay.metadata
     if (metadata) {
       const columns = Array.from({ length: 4 }, (_, column) => {
@@ -82,17 +84,19 @@ export class SquareTrayScene implements SimulationScene {
       // positionLocal is mutated by Three.js instancing; read raw geometry for the final transform.
       const finalClip = varying(uniform(finalViewProjection).mul(finalMatrix.mul(vec4(attribute('position', 'vec3'), 1))), 'finalClip')
       const uvScreen = finalClip.xy.div(finalClip.w).mul(0.5).add(0.5)
-      const regionSize = definition.width / (half * 2)
-      const imageUv = uvScreen.sub((1 - regionSize) / 2).div(regionSize)
+      const corners = [-1, 1].flatMap(x => [-1, 1].map(y =>
+        new Vector3(x * definition.width / 2, y * definition.width / 2, 0).project(this.camera)))
+      const min = new Vector2(Math.min(...corners.map(p => p.x)), Math.min(...corners.map(p => p.y))).multiplyScalar(0.5).addScalar(0.5)
+      const max = new Vector2(Math.max(...corners.map(p => p.x)), Math.max(...corners.map(p => p.y))).multiplyScalar(0.5).addScalar(0.5)
+      const imageUv = uvScreen.sub(uniform(min)).div(uniform(max.sub(min)))
       const inside = imageUv.x.greaterThanEqual(0).and(imageUv.x.lessThanEqual(1))
         .and(imageUv.y.greaterThanEqual(0)).and(imageUv.y.lessThanEqual(1))
       const sampled = this.textureNode.sample(imageUv)
-      // Gentle surface shading keeps the spheres readable without obscuring the image.
       const color = inside.select(sampled.rgb, vec4(0.24, 0.28, 0.29, 1).rgb)
-      material.colorNode = color.mul(normalView.z.clamp(0, 1).mul(0.16).add(0.84))
+      material.colorNode = color
     } else {
       const color = vec4(0.24, 0.28, 0.29, 1).rgb
-      material.colorNode = color.mul(normalView.z.clamp(0, 1).mul(0.16).add(0.84))
+      material.colorNode = color
     }
     const spheres = new InstancedMesh(geometry, material, definition.count)
     spheres.instanceMatrix.setUsage(DynamicDrawUsage)
@@ -101,7 +105,7 @@ export class SquareTrayScene implements SimulationScene {
     const content = this.content
     content.add(spheres)
 
-    const rimMaterial = new MeshBasicNodeMaterial({ color: '#657074' })
+    const rimMaterial = new MeshStandardNodeMaterial({ color: '#657074', roughness: 0.7 })
     for (const box of definition.visibleBoxes) {
       const mesh = new Mesh(new BoxGeometry(...box.halfSize.map(size => size * 2) as [number, number, number]), rimMaterial)
       mesh.position.set(...box.position)
@@ -179,11 +183,11 @@ export class SquareTrayScene implements SimulationScene {
 
   dispose(): void {
     this.replay.dispose()
-    const materials = new Set<MeshBasicNodeMaterial>()
+    const materials = new Set<MeshStandardNodeMaterial>()
     this.content.traverse(object => {
       if (object instanceof Mesh) {
         object.geometry.dispose()
-        materials.add(object.material as MeshBasicNodeMaterial)
+        materials.add(object.material as MeshStandardNodeMaterial)
       }
     })
     materials.forEach(material => material.dispose())

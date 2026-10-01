@@ -15,7 +15,7 @@
       <main class="workspace" id="workspace" aria-busy="true">
         <section class="preview" aria-labelledby="scene-title">
           <div class="preview__heading">
-            <div><p class="preview__eyebrow">SCENE 01 · DETERMINISTIC REPLAY</p><h1 class="preview__title" id="scene-title">Square tray</h1></div>
+            <div><p class="preview__eyebrow">SCENE <span id="scene-number">01</span> · DETERMINISTIC REPLAY</p><h1 class="preview__title" id="scene-title">Square tray</h1></div>
             <span class="preview__badge">LOOP</span>
           </div>
           <div class="preview__stage">
@@ -34,7 +34,10 @@
           <div class="panel__intro"><span class="panel__number">01 /</span><h2 class="panel__title">ばらばらから、<br />ひとつのイメージへ。</h2><p class="panel__description">球体が降り積もると、<br />散らばった断片が画像になる。</p></div>
           <div class="panel__section">
             <label class="field__label" for="scene">シーン</label>
-            <select class="field__select" id="scene" data-control disabled><option value="square-tray">01 — Square tray</option></select>
+            <select class="field__select" id="scene" data-control disabled>
+              <option value="square-tray">01 — Square tray · 平行投影</option>
+              <option value="square-tray-perspective">02 — Square tray · 透視投影＋ライト</option>
+            </select>
             <p class="panel__hint"><span id="sphere-count">400</span> spheres · 浅い正方形の容器</p>
           </div>
           <div class="panel__section">

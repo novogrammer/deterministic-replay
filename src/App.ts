@@ -69,6 +69,7 @@ export class App {
         const scene = await this.registry.create(id)
         this.runtime.loadScene(scene)
         element<HTMLElement>('#scene-title').textContent = scene.title
+        element<HTMLElement>('#scene-number').textContent = String(this.registry.list().findIndex(entry => entry.id === id) + 1).padStart(2, '0')
         element<HTMLElement>('#sphere-count').textContent = String(scene.count)
         element<HTMLElement>('#duration').textContent = formatTime(this.runtime.duration)
       }, true)
