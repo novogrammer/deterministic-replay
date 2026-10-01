@@ -18,7 +18,7 @@ export class SquareTrayScene implements SimulationScene, SceneSettings {
   readonly camera = new OrthographicCamera(-4.7, 4.7, 4.7, -4.7, 0.1, 100)
   readonly revision = 1
   readonly seed = 20261002
-  readonly count = 400
+  readonly count = 440
   readonly radius = 0.2
   readonly width = 8
   readonly depth = 0.44
@@ -108,10 +108,10 @@ export class SquareTrayScene implements SimulationScene, SceneSettings {
         .and(imageUv.y.greaterThanEqual(0)).and(imageUv.y.lessThanEqual(1))
       const sampled = this.textureNode.sample(imageUv)
       // Gentle surface shading keeps the spheres readable without obscuring the image.
-      const color = inside.select(sampled.rgb, vec4(0.24, 0.28, 0.29, 1).rgb)
-      material.colorNode = color.mul(normalView.z.clamp(0, 1).mul(0.16).add(0.84))
+      const color = sampled.rgb.mul(normalView.z.clamp(0, 1).mul(0.16).add(0.84))
+      material.colorNode = inside.select(color, uniform(this.scene.background as Color).rgb)
     } else {
-      const color = vec4(0.24, 0.28, 0.29, 1).rgb
+      const color = uniform(new Color('#ff00ff')).rgb
       material.colorNode = color.mul(normalView.z.clamp(0, 1).mul(0.16).add(0.84))
     }
     const spheres = new InstancedMesh(geometry, material, definition.count)

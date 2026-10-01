@@ -30,7 +30,7 @@ test('reset reproduces intermediate poses and spawning without saved trajectory'
       assert.deepEqual(poses, snapshots[index])
     })
     assert.equal(simulation.spawnSteps[0], 0)
-    assert.equal(simulation.spawnSteps[399], 390)
+    assert.equal(simulation.spawnSteps[scene.count - 1], Math.floor((scene.count - 1) / scene.batchSize) * scene.spawnEverySteps)
     assert.ok(snapshots[0].slice(10 * 7).every(value => value === 0))
   } finally { simulation.dispose() }
 })
@@ -59,7 +59,7 @@ test('forward simulation reaches baked final matrices on each replay', async () 
           new Vector3().setScalar(scene.radius),
         )
         assert.deepEqual(matrix.elements, metadata.finalMatrices.slice(id * 16, id * 16 + 16))
-        assert.ok(poses[offset + 1] + scene.radius < scene.width / 2, 'sphere stays within the final image region')
+        assert.ok(poses[offset + 1] + scene.radius < scene.cameraHalfSize, 'sphere stays within the final camera view')
       }
     }
   } finally { simulation.dispose() }

@@ -5,7 +5,7 @@ import {
   InstancedBufferAttribute, DynamicDrawUsage, PerspectiveCamera, MeshStandardNodeMaterial,
   HemisphereLight, DirectionalLight, Vector2,
 } from 'three/webgpu'
-import { attribute, instancedBufferAttribute, mat4, texture, uniform, varying, vec4 } from 'three/tsl'
+import { attribute, instancedBufferAttribute, mat4, output, texture, uniform, varying, vec4 } from 'three/tsl'
 import type { BakeFile, BakeMetadata, BoxDefinition, SceneSettings } from '../SceneData.ts'
 import { settingsKey } from '../SceneData.ts'
 import type { SimulationScene } from '../SimulationScene.ts'
@@ -19,7 +19,7 @@ export class SquareTrayPerspectiveScene implements SimulationScene, SceneSetting
   readonly camera = new PerspectiveCamera(38, 1, 0.1, 100)
   readonly revision = 1
   readonly seed = 20261002
-  readonly count = 400
+  readonly count = 440
   readonly radius = 0.2
   readonly width = 8
   readonly depth = 0.44
@@ -112,10 +112,11 @@ export class SquareTrayPerspectiveScene implements SimulationScene, SceneSetting
       const inside = imageUv.x.greaterThanEqual(0).and(imageUv.x.lessThanEqual(1))
         .and(imageUv.y.greaterThanEqual(0)).and(imageUv.y.lessThanEqual(1))
       const sampled = this.textureNode.sample(imageUv)
-      const color = inside.select(sampled.rgb, vec4(0.24, 0.28, 0.29, 1).rgb)
-      material.colorNode = color
+      material.colorNode = sampled.rgb
+      // Replace outside pixels after lighting so they match the clear color exactly.
+      material.outputNode = inside.select(output, vec4(uniform(this.scene.background as Color), 1))
     } else {
-      const color = vec4(0.24, 0.28, 0.29, 1).rgb
+      const color = uniform(new Color('#ff00ff')).rgb
       material.colorNode = color
     }
     const spheres = new InstancedMesh(geometry, material, definition.count)
