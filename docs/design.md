@@ -167,6 +167,8 @@ MP4はメモリ上で生成し、HTMLに用意したダウンロードリンク�
 
 公開先は[GitHub Pages](https://novogrammer.github.io/deterministic-replay/)。Viteのbaseは`./`とし、静的ファイルの取得は`import.meta.env.BASE_URL`を使う。現在のRapier compatはWASMを同梱する。[Vite: Deploying a Static Site](https://vite.dev/guide/static-deploy.html)
 
+OGP画像は`public/images/ogp.png`（1200×630）。Square trayの完成状態のキャンバスを左に置き、右にアプリ名と「パーツが集まり、画像が完成します」を載せる。背景はページと同じ暗色。`src/index.html`にOpen Graphと大きな画像を使うTwitter Cardのメタタグを置き、画像URLはGitHub Pagesの絶対URLを指定する。
+
 `.github/workflows/deploy.yaml`が`main`へのpushまたは手動実行でビルドし、`dist/`をGitHub Pagesへ公開する。READMEに公開ページへのリンクを置き、公開ページのフッターに[GitHubリポジトリ](https://github.com/novogrammer/deterministic-replay)へのテキストリンクを置く。
 
 今後は別の容器・投入方式、カメラ演出、Worker化、大きな出力の保存方法、対応ブラウザの範囲を検討する。非正方形の画像は現状拒否し、クロップは実装しない。
