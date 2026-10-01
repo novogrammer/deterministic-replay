@@ -1,6 +1,6 @@
 # deterministic-replay
 
-パーツが集まり、画像が完成する静的Webアプリ。正方形の画像を読み込み、物理シミュレーションが順方向に進んで画像が揃う様子をループでプレビューし、MP4として書き出せる。パーツの形状や動きはシーンごとに定義する。Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用する。
+好きな画像から、パーツが集まって絵が完成する動画を作れます。正方形の画像に対応した静的Webアプリ。物理シミュレーションが順方向に進んで画像が揃う様子をループでプレビューできる。パーツの形状や動きはシーンごとに定義する。Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用する。
 
 公開ページ: [Deterministic replay](https://novogrammer.github.io/deterministic-replay/)
 

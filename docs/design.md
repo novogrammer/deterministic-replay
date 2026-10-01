@@ -40,7 +40,7 @@ Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。
 
 途中の動きを保存せず、固定初期条件から順方向に計算することで、プレビューと録画に同じ進行方法を使う。最終Matrix4だけを保存すれば、画像を差し替えても物理の再ベイクは不要になる。UVはTSLで最終Matrix4と完成時カメラから計算し、画像と物理データを独立して扱う。
 
-設定パネルのh2は「パーツが集まり、画像が完成します」という簡潔な説明にする。形状や動きはシーンごとに異なるため、球体や積み重なりに限定しない。装飾的な番号や重複する説明文は置かない。
+設定パネルのh2は「好きな画像から、パーツが集まって絵が完成する動画を作れます」という簡潔な説明にする。形状や動きはシーンごとに異なるため、球体や積み重なりに限定しない。装飾的な番号や重複する説明文は置かない。
 
 シーンの見出しと選択肢の名前は「Square tray · 平行投影」「Square tray · 透視投影＋ライト」に揃える。見出し上はシーン番号だけを表示し、アプリ名を重複して表示しない。球体数と容器の説明、フッターのキャッチコピー、再生方式が共通であることを示す「LOOP」バッジ、ヘッダーの「PHYSICS / IMAGE / MOTION」は表示しない。
 
@@ -167,7 +167,7 @@ MP4はメモリ上で生成し、HTMLに用意したダウンロードリンク�
 
 公開先は[GitHub Pages](https://novogrammer.github.io/deterministic-replay/)。Viteのbaseは`./`とし、静的ファイルの取得は`import.meta.env.BASE_URL`を使う。現在のRapier compatはWASMを同梱する。[Vite: Deploying a Static Site](https://vite.dev/guide/static-deploy.html)
 
-OGP画像は`public/images/ogp.png`（1200×630）。Square trayの完成状態のキャンバスを左に置き、右にアプリ名と「パーツが集まり、画像が完成します」を載せる。背景はページと同じ暗色。`src/index.html`にOpen Graphと大きな画像を使うTwitter Cardのメタタグを置き、画像URLはGitHub Pagesの絶対URLを指定する。
+OGP画像は`public/images/ogp.png`（1200×630）。Square trayの完成状態のキャンバスを左に置き、右にアプリ名と「好きな画像から、パーツが集まって絵が完成する動画を作れます」を載せる。背景はページと同じ暗色。`src/index.html`にOpen Graphと大きな画像を使うTwitter Cardのメタタグを置き、画像URLはGitHub Pagesの絶対URLを指定する。
 
 `.github/workflows/deploy.yaml`が`main`へのpushまたは手動実行でビルドし、`dist/`をGitHub Pagesへ公開する。READMEに公開ページへのリンクを置き、公開ページのフッターに[GitHubリポジトリ](https://github.com/novogrammer/deterministic-replay)へのテキストリンクを置く。
 
