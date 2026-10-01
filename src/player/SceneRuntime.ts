@@ -8,7 +8,7 @@ import { attribute, instancedBufferAttribute, mat4, normalView, texture, uniform
 import type { SceneDefinition } from '../scenes/SceneDefinition.ts'
 import { ReplayData } from '../replay/ReplayData.ts'
 
-export class ScenePlayer {
+export class SceneRuntime {
   readonly renderer: WebGPURenderer
   readonly canvas: HTMLCanvasElement
   private readonly scene = new Scene()
@@ -24,6 +24,8 @@ export class ScenePlayer {
   private readonly rotation = new Quaternion()
   private readonly nextRotation = new Quaternion()
   private readonly scale = new Vector3()
+  private elapsed = 0
+  private showingFinal = false
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -48,6 +50,7 @@ export class ScenePlayer {
   get duration(): number { return (this.replay?.duration ?? 0) + (this.definition?.holdSeconds ?? 0) }
   get motionDuration(): number { return this.replay?.duration ?? 0 }
   get sceneId(): string { return this.definition?.id ?? '' }
+  get time(): number { return this.elapsed }
 
   setOutputSize(size: number): void {
     this.renderer.setSize(size, size, false)
@@ -110,15 +113,40 @@ export class ScenePlayer {
     }
     this.content = content
     this.scene.add(content)
+    this.reset()
   }
 
-  async renderAt(timeSeconds: number): Promise<void> {
+  reset(): void {
+    this.elapsed = 0
+    this.showingFinal = false
+    this.replay?.reset()
+    this.updateInstances()
+  }
+
+  advance(deltaSeconds: number): void {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) throw new Error('Scene only advances forward.')
+    if (this.showingFinal) throw new Error('Restart before playing the final pose view.')
+    this.elapsed = Math.min(this.elapsed + deltaSeconds, this.duration)
+    this.updateInstances()
+  }
+
+  showFinal(): void {
+    if (!this.replay || !this.spheres) return
+    this.showingFinal = true
+    for (let id = 0; id < this.replay.metadata.count; id++) {
+      this.matrix.fromArray(this.replay.metadata.finalMatrices, id * 16)
+      this.spheres.setMatrixAt(id, this.matrix)
+    }
+    this.spheres.instanceMatrix.needsUpdate = true
+  }
+
+  private updateInstances(): void {
     if (!this.replay || !this.spheres || !this.definition) return
     const { metadata } = this.replay
-    const time = Math.max(0, Math.min(timeSeconds, this.replay.duration))
+    const time = Math.min(this.elapsed, this.replay.duration)
     const sampleTime = time / metadata.timeStep
     const frame = Math.min(Math.floor(sampleTime), metadata.endStep)
-    this.replay.sample(frame)
+    this.replay.advanceToStep(frame)
     const alpha = sampleTime - frame
     for (let id = 0; id < metadata.count; id++) {
       if (sampleTime < metadata.spawnSteps[id]) {
@@ -145,6 +173,9 @@ export class ScenePlayer {
       this.spheres.setMatrixAt(id, this.matrix)
     }
     this.spheres.instanceMatrix.needsUpdate = true
+  }
+
+  async render(): Promise<void> {
     this.renderer.render(this.scene, this.camera)
     // Capture must wait for this frame before CanvasSource snapshots the canvas.
     const backend = this.renderer.backend as typeof this.renderer.backend & { device?: GPUDevice }

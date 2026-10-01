@@ -1,10 +1,10 @@
 import { Texture } from 'three/webgpu'
 import { SceneRegistry } from './scenes/SceneRegistry.ts'
 import { ReplayData } from './replay/ReplayData.ts'
-import { ScenePlayer } from './player/ScenePlayer.ts'
-import { PreviewController } from './player/PreviewController.ts'
-import type { PreviewState } from './player/PreviewController.ts'
-import { VideoExporter } from './export/VideoExporter.ts'
+import { SceneRuntime } from './player/SceneRuntime.ts'
+import { SessionController } from './player/SessionController.ts'
+import type { PlaybackState } from './player/SessionController.ts'
+import { VideoRecorder } from './export/VideoRecorder.ts'
 
 function element<T extends HTMLElement>(selector: string): T {
   const node = document.querySelector<T>(selector)
@@ -16,15 +16,13 @@ function formatTime(seconds: number): string { return `${seconds.toFixed(1)}s` }
 
 export class App {
   private readonly registry = new SceneRegistry()
-  private readonly player = new ScenePlayer(element<HTMLCanvasElement>('#preview'))
-  private readonly preview = new PreviewController(this.player, state => this.updatePlayback(state), error => this.showError(error))
-  private readonly exporter = new VideoExporter()
+  private readonly runtime = new SceneRuntime(element<HTMLCanvasElement>('#preview'))
+  private readonly session = new SessionController(this.runtime, new VideoRecorder(), state => this.updatePlayback(state), error => this.showError(error))
   private readonly sceneSelect = element<HTMLSelectElement>('#scene')
   private readonly imageInput = element<HTMLInputElement>('#image')
   private readonly playButton = element<HTMLButtonElement>('#play')
   private readonly finishButton = element<HTMLButtonElement>('#finish')
   private readonly restartButton = element<HTMLButtonElement>('#restart')
-  private readonly timeline = element<HTMLInputElement>('#timeline')
   private readonly resolution = element<HTMLSelectElement>('#resolution')
   private readonly exportButton = element<HTMLButtonElement>('#export')
   private readonly cancelButton = element<HTMLButtonElement>('#cancel')
@@ -40,10 +38,9 @@ export class App {
     this.bindEvents()
     this.setBusy(true)
     try {
-      await this.player.init()
+      await this.runtime.init()
       await this.selectScene(this.sceneSelect.value)
-      this.preview.start()
-      this.preview.play()
+      this.session.play()
     } catch (error) {
       this.showError(error)
       this.setBusy(true)
@@ -52,81 +49,70 @@ export class App {
 
   private bindEvents(): void {
     this.playButton.addEventListener('click', () => {
-      if (this.preview.state.playing) this.preview.pause()
-      else this.preview.play()
+      if (this.session.state.playing) this.session.pause()
+      else this.session.play()
     })
-    this.restartButton.addEventListener('click', () => { this.preview.seek(0); this.preview.play() })
-    this.finishButton.addEventListener('click', () => { this.preview.pause(); this.preview.seek(this.player.motionDuration) })
-    this.timeline.addEventListener('input', () => { this.preview.pause(); this.preview.seek(Number(this.timeline.value)) })
+    this.restartButton.addEventListener('click', () => { void this.session.restart().catch(error => this.showError(error)) })
+    this.finishButton.addEventListener('click', () => { void this.session.showFinal().catch(error => this.showError(error)) })
     this.sceneSelect.addEventListener('change', () => { void this.selectScene(this.sceneSelect.value).catch(error => this.showError(error)) })
     this.imageInput.addEventListener('change', () => { void this.loadImage().catch(error => this.showError(error)) })
     this.resolution.addEventListener('change', () => { void this.resize().catch(error => this.showError(error)) })
     element<HTMLSelectElement>('#fps').addEventListener('change', () => this.clearDownload())
     this.exportButton.addEventListener('click', () => { void this.exportVideo() })
-    this.cancelButton.addEventListener('click', () => this.exporter.cancel())
-    window.addEventListener('pagehide', () => this.dispose(), { once: true })
+    this.cancelButton.addEventListener('click', () => this.session.cancelRecording())
+    window.addEventListener('pagehide', () => { void this.dispose() }, { once: true })
   }
 
   private async selectScene(id: string): Promise<void> {
     this.setBusy(true)
-    const previousState = await this.preview.suspend()
     try {
-      const definition = this.registry.get(id)
-      const replay = await ReplayData.load(definition)
-      this.player.loadScene(definition, replay)
-      this.timeline.max = String(this.player.duration)
-      element<HTMLElement>('#scene-title').textContent = definition.title
-      element<HTMLElement>('#sphere-count').textContent = String(definition.count)
-      element<HTMLElement>('#duration').textContent = formatTime(this.player.duration)
+      await this.session.update(async () => {
+        const definition = this.registry.get(id)
+        const replay = await ReplayData.load(definition)
+        this.runtime.loadScene(definition, replay)
+        element<HTMLElement>('#scene-title').textContent = definition.title
+        element<HTMLElement>('#sphere-count').textContent = String(definition.count)
+        element<HTMLElement>('#duration').textContent = formatTime(this.runtime.duration)
+      }, true)
       this.status.textContent = '繰り返し再生 · 画像は端末内で処理されます'
       this.clearDownload()
       this.error.hidden = true
-      await this.preview.restore({ time: 0, playing: previousState.playing })
-    } catch (error) {
-      await this.preview.restore(previousState)
-      throw error
-    } finally {
-      this.setBusy(false)
-    }
+    } finally { this.setBusy(false) }
   }
 
   private async loadImage(): Promise<void> {
     const file = this.imageInput.files?.[0]
     if (!file || this.busy) return
     this.setBusy(true)
-    const state = await this.preview.suspend()
-    let bitmap: ImageBitmap | null = null
+    const decoded: { bitmap: ImageBitmap | null } = { bitmap: null }
     try {
-      bitmap = await createImageBitmap(file, { imageOrientation: 'flipY' })
-      if (bitmap.width !== bitmap.height) throw new Error('正方形の画像を選んでください。')
-      const texture = new Texture(bitmap)
-      texture.flipY = false
-      texture.needsUpdate = true
-      this.player.setTexture(texture)
-      this.imageBitmap?.close()
-      this.imageBitmap = bitmap
-      bitmap = null
+      await this.session.update(async () => {
+        decoded.bitmap = await createImageBitmap(file, { imageOrientation: 'flipY' })
+        if (decoded.bitmap.width !== decoded.bitmap.height) throw new Error('正方形の画像を選んでください。')
+        const texture = new Texture(decoded.bitmap)
+        texture.flipY = false
+        texture.needsUpdate = true
+        this.runtime.setTexture(texture)
+        this.imageBitmap?.close()
+        this.imageBitmap = decoded.bitmap
+        decoded.bitmap = null
+      })
       element<HTMLElement>('#image-name').textContent = file.name
       this.error.hidden = true
       this.clearDownload()
     } finally {
-      bitmap?.close()
+      decoded.bitmap?.close()
       this.imageInput.value = ''
-      try { await this.preview.restore(state) }
-      finally { this.setBusy(false) }
+      this.setBusy(false)
     }
   }
 
   private async resize(): Promise<void> {
     this.setBusy(true)
-    const state = await this.preview.suspend()
     try {
-      this.player.setOutputSize(Number(this.resolution.value))
+      await this.session.update(() => this.runtime.setOutputSize(Number(this.resolution.value)))
       this.clearDownload()
-      await this.preview.restore(state)
-    } finally {
-      this.setBusy(false)
-    }
+    } finally { this.setBusy(false) }
   }
 
   private async exportVideo(): Promise<void> {
@@ -137,34 +123,30 @@ export class App {
     this.progress.hidden = false
     this.progress.value = 0
     this.cancelButton.hidden = false
-    const state = await this.preview.suspend()
     try {
       const fps = Number(element<HTMLSelectElement>('#fps').value)
-      const blob = await this.exporter.export(this.player, fps, value => {
+      const blob = await this.session.record(fps, value => {
         this.progress.value = value
         this.status.textContent = `MP4を書き出し中 · ${Math.round(value * 100)}%`
       })
       this.downloadUrl = URL.createObjectURL(blob)
       this.download.href = this.downloadUrl
-      this.download.download = `${this.player.sceneId}-${this.player.outputSize}-${fps}fps.mp4`
+      this.download.download = `${this.runtime.sceneId}-${this.runtime.outputSize}-${fps}fps.mp4`
       this.download.hidden = false
       this.status.textContent = 'MP4ができました。ダウンロードして保存できます。'
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') this.status.textContent = '書き出しをキャンセルしました。'
       else this.showError(error)
     } finally {
-      try { await this.preview.restore(state) }
-      catch (error) { this.showError(error) }
       this.progress.hidden = true
       this.cancelButton.hidden = true
       this.setBusy(false)
     }
   }
 
-  private updatePlayback(state: PreviewState): void {
-    this.timeline.value = String(state.time)
+  private updatePlayback(state: PlaybackState): void {
     element<HTMLElement>('#current-time').textContent = formatTime(state.time)
-    this.playButton.textContent = state.playing ? '一時停止' : '再生'
+    this.playButton.textContent = state.showingFinal ? '先頭から再生' : state.playing ? '一時停止' : '再生'
   }
 
   private setBusy(busy: boolean): void {
@@ -185,10 +167,9 @@ export class App {
     this.downloadUrl = null
   }
 
-  private dispose(): void {
-    this.preview.dispose()
-    this.exporter.cancel()
-    this.player.dispose()
+  private async dispose(): Promise<void> {
+    await this.session.dispose()
+    this.runtime.dispose()
     this.imageBitmap?.close()
     this.clearDownload()
   }

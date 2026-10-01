@@ -9,7 +9,7 @@ export class ReplayData {
   readonly simulation: PhysicsSimulation
   readonly previous: Float32Array
   readonly next: Float32Array
-  private cachedFrame = -1
+  private frame = 0
 
   private constructor(scene: SceneDefinition, metadata: BakeMetadata) {
     this.metadata = metadata
@@ -17,13 +17,18 @@ export class ReplayData {
     this.simulation = new PhysicsSimulation(scene)
     this.previous = new Float32Array(scene.count * 7)
     this.next = new Float32Array(scene.count * 7)
+    this.reset()
   }
 
   static async load(scene: SceneDefinition, signal?: AbortSignal): Promise<ReplayData> {
-    await PhysicsSimulation.ready
     const response = await fetch(`${import.meta.env.BASE_URL}scenes/${scene.id}/bake.json`, { signal })
     if (!response.ok) throw new Error('シーンデータを読み込めません。npm run bake を実行してください。')
     const metadata: BakeMetadata = await response.json()
+    return this.fromBake(scene, metadata)
+  }
+
+  static async fromBake(scene: SceneDefinition, metadata: BakeMetadata): Promise<ReplayData> {
+    await PhysicsSimulation.ready
     if (metadata.formatVersion !== 1 || metadata.sceneId !== scene.id
       || metadata.sceneRevision !== scene.revision || metadata.settingsKey !== settingsKey(scene)
       || metadata.rapierVersion !== RAPIER.version() || metadata.timeStep !== scene.timeStep
@@ -38,15 +43,25 @@ export class ReplayData {
     return new ReplayData(scene, metadata)
   }
 
-  sample(frame: number): void {
-    frame = Math.min(frame, this.metadata.endStep)
-    if (frame === this.cachedFrame) return
-    if (frame < this.simulation.step) this.simulation.reset()
-    while (this.simulation.step < frame) this.simulation.advance()
+  reset(): void {
+    this.simulation.reset()
+    this.frame = 0
     this.simulation.writePoses(this.previous)
-    if (frame < this.metadata.endStep) this.simulation.advance()
+    this.simulation.advance()
     this.simulation.writePoses(this.next)
-    this.cachedFrame = frame
+  }
+
+  advanceToStep(frame: number): void {
+    frame = Math.min(frame, this.metadata.endStep)
+    if (!Number.isInteger(frame) || frame < this.frame) throw new Error('Replay only advances forward. Use reset to restart.')
+    while (this.frame < frame) {
+      this.previous.set(this.next)
+      this.frame++
+      if (this.simulation.step < this.metadata.endStep) {
+        this.simulation.advance()
+        this.simulation.writePoses(this.next)
+      }
+    }
   }
 
   dispose(): void { this.simulation.dispose() }
