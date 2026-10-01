@@ -12,4 +12,14 @@ Vite、Three.js / TSL、Rapier3D、Mediabunnyを使用し、GitHub Pagesで公�
 
 [設計書](docs/design.md)に、確定事項、処理の流れ、投影UV、リプレイと動画出力の方針、未決定事項をまとめている。
 
-現時点では設計docsのみ。アプリ実装、依存パッケージの導入、公開設定はまだ行っていない。
+Vite＋TypeScriptの初期構成を準備済み。シミュレーション、描画、動画出力の実装と公開設定はまだ行っていない。
+
+## 開発
+
+```sh
+npm run dev
+npm run build
+npm run preview
+```
+
+Viteのルートは`src/`で、HTMLエントリーは`src/index.html`。静的アセットはリポジトリ直下の`public/`、ビルド出力はリポジトリ直下の`dist/`を使う。各パスは`import.meta.url`を基準に絶対パスへ解決する。ビルド時は`emptyOutDir: true`で`dist/`の既存の出力ファイルを削除してから生成する。
