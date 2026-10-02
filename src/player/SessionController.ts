@@ -6,6 +6,7 @@ export interface SessionRuntime {
   readonly duration: number
   readonly motionDuration: number
   readonly time: number
+  setAnimationLoop(callback: ((timestamp: number) => void) | null): Promise<void>
   reset(): void
   advance(deltaSeconds: number): void
   showFinal(): void
@@ -34,6 +35,8 @@ export class SessionController {
   private operation: Promise<unknown> | null = null
   private finalView = false
   private cancelled = false
+  private drawing = false
+  private requestedDraw: { resolve: () => void; reject: (error: unknown) => void } | null = null
 
   constructor(runtime: SessionRuntime, recorder: FrameRecorder,
     onState: (state: PlaybackState) => void, onError: (error: unknown) => void) {
@@ -41,7 +44,8 @@ export class SessionController {
     this.recorder = recorder
     this.onState = onState
     this.onError = onError
-    this.clock = new PreviewPlayer(delta => this.previewTick(delta), error => { this.onError(error); this.notify() })
+    this.clock = new PreviewPlayer()
+    void runtime.setAnimationLoop(this.animationFrame).catch(error => this.onError(error))
   }
 
   get state(): PlaybackState {
@@ -81,7 +85,7 @@ export class SessionController {
     try {
       await action()
       if (resetPlayback) this.finalView = false
-      if (!this.disposed) await this.runtime.render()
+      if (!this.disposed) await this.requestDraw()
     } finally { this.leave(wasPlaying) }
   }
 
@@ -102,13 +106,12 @@ export class SessionController {
         this.checkCancelled()
         const timestamp = frame / fps
         this.runtime.advance(Math.max(0, timestamp - this.runtime.time))
-        await this.runtime.render()
+        await this.requestDraw()
         this.checkCancelled()
         const pixels = await this.runtime.readFrame()
         this.checkCancelled()
         await this.recorder.addFrame(pixels, timestamp, 1 / fps)
         onProgress((frame + 1) / frameCount)
-        if (frame % 8 === 0) await new Promise(resolve => setTimeout(resolve, 0))
       }
       this.checkCancelled()
       const blob = await this.recorder.finish()
@@ -118,7 +121,7 @@ export class SessionController {
       try { await this.recorder.abort() }
       finally {
         try {
-          if (!this.disposed) { this.runtime.reset(); await this.runtime.render() }
+          if (!this.disposed) { this.runtime.reset(); await this.requestDraw() }
         } finally { this.leave(wasPlaying) }
       }
     }
@@ -130,8 +133,12 @@ export class SessionController {
     this.cancelled = true
     this.mode = 'disposed'
     this.clock.pause()
+    const request = this.requestedDraw
+    this.requestedDraw = null
+    request?.reject(new DOMException('Session disposed.', 'AbortError'))
     try { if (this.pending) await this.pending } catch { /* Already reported by the preview clock. */ }
     try { await this.operation } catch { /* The caller reports operation failures. */ }
+    await this.runtime.setAnimationLoop(null)
   }
 
   private async enter(mode: 'update' | 'record'): Promise<boolean> {
@@ -164,7 +171,38 @@ export class SessionController {
     return operation.finally(() => { if (this.operation === operation) this.operation = null })
   }
 
-  private previewTick(delta: number): Promise<void> {
+  // Only this callback submits scene draws, after Three has advanced its frame ID.
+  private animationFrame = (timestamp: number): void => {
+    if (this.drawing || this.pending) return
+    const request = this.requestedDraw
+    if (request) {
+      this.requestedDraw = null
+      this.drawing = true
+      void this.runtime.render().then(() => {
+        this.drawing = false
+        request.resolve()
+      }, error => {
+        this.drawing = false
+        request.reject(error)
+      })
+      return
+    }
+    if (this.mode !== 'preview') return
+    const delta = this.clock.tick(timestamp)
+    if (delta === null) return
+    void this.previewTick(delta).catch(error => {
+      this.clock.pause()
+      this.onError(error)
+      this.notify()
+    })
+  }
+
+  private requestDraw(): Promise<void> {
+    if (this.requestedDraw) return Promise.reject(new Error('A scene draw is already queued.'))
+    return new Promise((resolve, reject) => { this.requestedDraw = { resolve, reject } })
+  }
+
+  private async previewTick(delta: number): Promise<void> {
     if (this.mode !== 'preview') return Promise.resolve()
     const duration = this.runtime.duration
     if (duration > 0 && this.runtime.time + delta >= duration) {

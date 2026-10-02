@@ -87,6 +87,10 @@ export class SceneRuntime {
     this.showingFinal = true
   }
 
+  async setAnimationLoop(callback: ((timestamp: number) => void) | null): Promise<void> {
+    await this.renderer.setAnimationLoop(callback)
+  }
+
   async render(): Promise<void> {
     if (!this.activeScene) return
     // The retained output target uses the same output conversion/MSAA as the canvas.

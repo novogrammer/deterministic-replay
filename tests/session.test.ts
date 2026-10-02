@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { TestContext } from 'node:test'
 import { SessionController } from '../src/player/SessionController.ts'
 import type { PixelFrame } from '../src/rendering/PixelFrame.ts'
 import type { FrameRecorder, SessionRuntime } from '../src/player/SessionController.ts'
@@ -21,6 +20,11 @@ class FakeRuntime implements SessionRuntime {
   updates: number[] = []
   resets = 0
   draw: () => Promise<void> = async () => {}
+  animationLoop: ((timestamp: number) => void) | null = null
+  setAnimationLoop(callback: ((timestamp: number) => void) | null): Promise<void> {
+    this.animationLoop = callback
+    return Promise.resolve()
+  }
   reset(): void { this.resets++; this.time = 0; this.final = false }
   advance(delta: number): void {
     assert.ok(delta >= 0)
@@ -44,56 +48,51 @@ class FakeRecorder implements FrameRecorder {
   abort(): Promise<void> { this.aborts++; return Promise.resolve() }
 }
 
-globalThis.requestAnimationFrame = () => { throw new Error('Clock not installed') }
-globalThis.cancelAnimationFrame = () => {}
-
-function setup(t: TestContext) {
-  const callbacks = new Map<number, FrameRequestCallback>()
-  let nextId = 0
-  t.mock.method(globalThis, 'requestAnimationFrame', callback => { callbacks.set(++nextId, callback); return nextId })
-  t.mock.method(globalThis, 'cancelAnimationFrame', id => { callbacks.delete(id) })
+function setup() {
   const runtime = new FakeRuntime()
   const recorder = new FakeRecorder()
   const errors: unknown[] = []
   const session = new SessionController(runtime, recorder, () => {}, error => errors.push(error))
-  return {
-    runtime, recorder, session, callbacks, errors,
-    tick: () => {
-      const [id, callback] = callbacks.entries().next().value!
-      callbacks.delete(id)
-      callback(performance.now() + 16)
-    },
+  let timestamp = performance.now()
+  const tick = () => { timestamp = Math.max(timestamp + 16, performance.now()); runtime.animationLoop?.(timestamp) }
+  // Run renderer frames only when explicitly requested by the test.
+  const drive = async <T>(operation: Promise<T>): Promise<T> => {
+    let done = false
+    void operation.then(() => { done = true }, () => { done = true })
+    for (let i = 0; !done && i < 100; i++) { tick(); await settle() }
+    assert.equal(done, true, 'operation should finish through renderer frames')
+    return operation
   }
+  return { runtime, recorder, session, errors, tick, drive }
 }
 
 const settle = () => new Promise<void>(resolve => setImmediate(resolve))
 
-test('record waits for the active preview draw and owns rendering until all frames finish', async t => {
-  const { session, runtime, recorder, callbacks, tick } = setup(t)
+test('record waits for the active preview draw and owns rendering until all frames finish', async () => {
+  const { session, runtime, recorder, tick, drive } = setup()
   const draw = deferred()
   runtime.draw = () => draw.promise
   session.play()
   tick()
   const recording = session.record(30, () => {})
-  assert.equal(callbacks.size, 0)
+  assert.equal(session.state.playing, false)
   await settle()
   assert.equal(recorder.starts, 0)
   session.play()
-  assert.equal(callbacks.size, 0)
+  assert.equal(session.state.playing, false)
   runtime.draw = async () => {}
   draw.resolve()
-  const blob = await recording
+  const blob = await drive(recording)
   assert.ok(blob.size > 0)
   assert.deepEqual(recorder.timestamps, [0, 1 / 30, 2 / 30])
   assert.deepEqual(runtime.draws.slice(1), [0, 1 / 30, 2 / 30, 0])
   assert.equal(runtime.time, 0)
   assert.equal(session.state.playing, true)
-  assert.equal(callbacks.size, 1)
   await session.dispose()
 })
 
-test('cancel during the handoff to record is honored before capturing a frame', async t => {
-  const { session, runtime, recorder, tick } = setup(t)
+test('cancel during the handoff to record is honored before capturing a frame', async () => {
+  const { session, runtime, recorder, tick, drive } = setup()
   const draw = deferred()
   runtime.draw = () => draw.promise
   session.play()
@@ -102,48 +101,49 @@ test('cancel during the handoff to record is honored before capturing a frame', 
   session.cancelRecording()
   runtime.draw = async () => {}
   draw.resolve()
-  await assert.rejects(recording, { name: 'AbortError' })
+  await assert.rejects(drive(recording), { name: 'AbortError' })
   assert.deepEqual(recorder.timestamps, [])
   assert.equal(runtime.time, 0)
   assert.equal(session.state.playing, true)
   await session.dispose()
 })
 
-test('final view reads baked poses without advancing; play starts a new cycle', async t => {
-  const { session, runtime, callbacks } = setup(t)
-  await session.showFinal()
+test('final view reads baked poses without advancing; play starts a new cycle', async () => {
+  const { session, runtime, drive } = setup()
+  await drive(session.showFinal())
   assert.equal(runtime.final, true)
   assert.deepEqual(runtime.updates, [])
   assert.equal(session.state.time, runtime.motionDuration)
   assert.equal(session.state.showingFinal, true)
-  assert.equal(callbacks.size, 0)
+  assert.equal(session.state.playing, false)
   session.play()
   assert.equal(runtime.final, false)
   assert.equal(runtime.time, 0)
-  assert.equal(callbacks.size, 1)
+  assert.equal(session.state.playing, true)
   await session.dispose()
 })
 
-test('record failure cleans up and restores a paused preview at the start', async t => {
-  const { session, runtime, recorder, callbacks } = setup(t)
+test('record failure cleans up and restores a paused preview at the start', async () => {
+  const { session, runtime, recorder, drive } = setup()
   recorder.add = async () => { throw new Error('encode failed') }
-  await assert.rejects(session.record(30, () => {}), /encode failed/)
+  await assert.rejects(drive(session.record(30, () => {})), /encode failed/)
   assert.equal(recorder.aborts, 1)
   assert.equal(runtime.time, 0)
   assert.equal(session.state.playing, false)
-  assert.equal(callbacks.size, 0)
-  await session.restart()
-  assert.equal(callbacks.size, 1)
+  await drive(session.restart())
+  assert.equal(session.state.playing, true)
   await session.dispose()
 })
 
-test('settings updates cannot overlap recording; dispose waits for capture and never restarts preview', async t => {
-  const { session, recorder, callbacks, runtime } = setup(t)
+test('settings updates cannot overlap recording; dispose waits for capture and never restarts preview', async () => {
+  const { session, recorder, runtime, tick, drive } = setup()
   const capture = deferred()
   recorder.add = () => capture.promise
   session.play()
   const recording = session.record(30, () => {})
   const rejectedRecording = assert.rejects(recording, { name: 'AbortError' })
+  await settle()
+  tick()
   await settle()
   await assert.rejects(session.update(() => { throw new Error('should not execute') }), /busy/)
   let disposed = false
@@ -151,14 +151,15 @@ test('settings updates cannot overlap recording; dispose waits for capture and n
   await settle()
   assert.equal(disposed, false)
   capture.resolve()
+  await drive(disposal)
   await rejectedRecording
-  await disposal
-  assert.equal(callbacks.size, 0)
+  assert.equal(runtime.animationLoop, null)
+  assert.equal(session.state.playing, false)
   assert.equal(runtime.draws.length, 1)
 })
 
-test('preview wraps by resetting and advancing forward, with no renders while paused', async t => {
-  const { session, runtime, callbacks, tick } = setup(t)
+test('preview wraps by resetting and advancing forward, with no renders while paused', async () => {
+  const { session, runtime, tick } = setup()
   runtime.time = runtime.duration - 0.001
   session.play()
   tick()
@@ -167,28 +168,91 @@ test('preview wraps by resetting and advancing forward, with no renders while pa
   assert.ok(runtime.time < runtime.duration)
   session.pause()
   const count = runtime.draws.length
+  tick()
   await settle()
   assert.equal(runtime.draws.length, count)
-  assert.equal(callbacks.size, 0)
+  assert.equal(session.state.playing, false)
   await session.dispose()
 })
 
-test('cancel waits for pixel readback and never submits the cancelled frame', async t => {
-  const { session, runtime, recorder } = setup(t)
+test('cancel waits for pixel readback and never submits the cancelled frame', async () => {
+  const { session, runtime, recorder, tick, drive } = setup()
   const readback = deferred()
-  t.mock.method(runtime, 'readFrame', async () => {
+  runtime.readFrame = async () => {
     await readback.promise
     return { width: 1, height: 1, pixels: new Uint8Array(4) }
-  })
+  }
   const recording = session.record(30, () => {})
   const rejected = assert.rejects(recording, { name: 'AbortError' })
+  await settle()
+  tick()
   await settle()
   assert.equal(runtime.draws.length, 1)
   assert.equal(recorder.timestamps.length, 0)
   session.cancelRecording()
   readback.resolve()
-  await rejected
+  await drive(rejected)
   assert.equal(recorder.timestamps.length, 0)
   assert.equal(runtime.time, 0)
   await session.dispose()
+})
+
+
+test('every requested draw waits for a renderer frame, including reset after final view', async () => {
+  const { session, runtime, recorder, tick, drive } = setup()
+  const final = session.showFinal()
+  await settle()
+  assert.equal(runtime.draws.length, 0)
+  tick()
+  await final
+  const recording = session.record(30, () => {})
+  await settle()
+  assert.equal(runtime.draws.length, 1)
+  assert.equal(runtime.final, false)
+  tick()
+  await settle()
+  assert.deepEqual(recorder.timestamps, [0])
+  assert.deepEqual(runtime.draws, [0, 0])
+  await drive(recording)
+  await session.dispose()
+})
+
+test('slow GPU and encoder do not advance or submit extra recording frames', async () => {
+  const { session, runtime, recorder, tick, drive } = setup()
+  const gpu = deferred(), encode = deferred()
+  runtime.draw = () => gpu.promise
+  recorder.add = () => encode.promise
+  const recording = session.record(30, () => {})
+  await settle()
+  tick()
+  await settle()
+  for (let i = 0; i < 5; i++) { tick(); await settle() }
+  assert.deepEqual(runtime.draws, [0])
+  assert.deepEqual(runtime.updates, [0])
+  assert.deepEqual(recorder.timestamps, [])
+  runtime.draw = async () => {}
+  gpu.resolve()
+  await settle()
+  assert.deepEqual(recorder.timestamps, [0])
+  for (let i = 0; i < 5; i++) { tick(); await settle() }
+  assert.deepEqual(runtime.updates, [0])
+  assert.deepEqual(runtime.draws, [0])
+  recorder.add = async () => {}
+  encode.resolve()
+  await drive(recording)
+  assert.deepEqual(recorder.timestamps, [0, 1 / 30, 2 / 30])
+  await session.dispose()
+})
+
+
+test('dispose rejects a queued draw without waiting for another renderer frame', async () => {
+  const { session, runtime } = setup()
+  const update = session.showFinal()
+  const rejected = assert.rejects(update, { name: 'AbortError' })
+  await settle()
+  assert.equal(runtime.draws.length, 0)
+  await session.dispose()
+  await rejected
+  assert.equal(runtime.animationLoop, null)
+  assert.equal(runtime.draws.length, 0)
 })

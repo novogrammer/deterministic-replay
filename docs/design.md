@@ -108,7 +108,7 @@ SceneRuntimeはshadowMapを有効化し、影を使うライトとMeshはシー�
 | SeededRandom | リセット時に初期化する固定シードの乱数。各シーンのBody構築へ渡す |
 | ReplayData | 各シーン内部で使うベイク検証と前後2姿勢の保持。ファイル取得は行わない |
 | SceneRuntime | シーンの時間管理、step/reset/updateViewへの委譲、renderer・RenderTarget・画素読み出し |
-| PreviewPlayer | rAFの時計、再生・一時停止。描画や録画について知らない |
+| PreviewPlayer | rendererから渡される時刻によるプレビューの時計、再生・一時停止。描画や録画について知らない |
 | VideoRecorder | 渡されたRGBAフレームのエンコード、MP4生成。物理や時刻進行を制御しない |
 | SessionController | モード切り替え、描画の排他制御、ループ、録画のフレーム時刻と進捗・キャンセル |
 | App | 静的HTMLの操作、シーン・画像・出力設定の変更 |
@@ -158,9 +158,11 @@ Node.js 22.6以降でTypeScriptを実行するローカルスクリプト。未�
 
 「完成を見る」はベイク済みMatrix4を直接表示する専用操作。シミュレーションを終端まで進める操作ではない。この表示から再生する場合は先頭へ戻す。通常の順再生の終端では、物理結果と保存済みMatrix4を比較し、保存値への強制移動で補正しない。
 
-`SessionController`をシーンの更新・描画の唯一の入口とする。プレビューでは`PreviewPlayer`のrAF時計から届く時間差を使う。Rapierのタイムステップ自体は1/60秒で固定する。録画ではSessionControllerがフレームnの時刻`n / FPS`を決め、前フレームからの差分だけ前進させ、描画を待ってVideoRecorderへ渡す。VideoRecorderはシーンやプレイヤーに依存しない。
+`SessionController`をシーンの更新・描画の唯一の入口とする。更新・描画の入口はrendererの`setAnimationLoop`に一本化する。プレビューでは、そこから渡される時刻を`PreviewPlayer`が時間差へ変換する。Rapierのタイムステップ自体は1/60秒で固定する。録画ではSessionControllerがフレームnの時刻`n / FPS`を決め、前フレームからの差分だけ前進させ、描画を待ってVideoRecorderへ渡す。VideoRecorderはシーンやプレイヤーに依存しない。
 
-recordまたは設定変更のモードに入ると、プレビューのrAF予約を止め、進行中の描画が終わるまで待つ。record中はプレビュー操作や設定変更を受け付けない。物理World・InstancedMesh・renderer・canvasは共有し、各モードをSessionControllerで排他的に動かす。
+recordまたは設定変更のモードに入ると、プレビューの時計を止め、進行中の描画が終わるまで待つ。録画・設定変更・リセット後の描画は次の`setAnimationLoop`コールバックまで待ち、その中で実行する。一時停止中やGPU・画素読み出し・エンコードの待機中は、ループが呼ばれても追加の更新・描画を行わない。record中はプレビュー操作や設定変更を受け付けない。物理World・InstancedMesh・renderer・canvasは共有し、各モードをSessionControllerで排他的に動かす。
+
+Three.jsは同じカメラの影を表示フレームごとに更新するため、完成状態の描画直後に同じ表示フレーム内でリセットを描くと、前の影が残る場合がある。すべてのシーン描画を`setAnimationLoop`内で行い、Three.jsのフレーム更新後に影を更新させる。録画の進行はフレーム番号で決め、表示フレームの待機時間が動画の時間や物理結果を変えない。書き出し速度は画面の更新頻度に制約され、バックグラウンドではブラウザのループ抑制により遅くなる。
 
 録画の完了・キャンセル・失敗時には、レコーダーを閉じてシーンを先頭へリセットし、描画が終わってからpreviewモードへ戻す。録画前の再生／一時停止状態を引き継ぐ。以前の再生位置へ戻すseekは行わない。設定変更では現在の物理状態を保って再描画し、シーン変更では初期状態へ戻す。
 
