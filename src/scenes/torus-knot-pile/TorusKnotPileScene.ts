@@ -62,7 +62,7 @@ export class TorusKnotPileScene implements SimulationScene, SceneSettings, Physi
 
   private constructor() {
     this.scene.background = new Color('#171a1c')
-    this.camera.position.set(8, 9, 11)
+    this.camera.position.set(4.4, 5.1075, 6.05)
     this.camera.lookAt(0, 0.35, 0)
     this.camera.updateMatrixWorld()
     const key = this.keyLight

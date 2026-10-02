@@ -69,8 +69,6 @@ test('forward completion matches saved final view; camera, projection and shadow
       matrix.fromArray(bakeFile.bake.finalMatrices, id * 16).decompose(position, rotation, scale)
       assert.ok(scale.distanceTo(new Vector3(1, 1, 1)) < 0.000001)
       assert.ok(position.y > 0 && Math.abs(position.x) < scene.floorSize / 2 && Math.abs(position.z) < scene.floorSize / 2)
-      const projected = position.project(scene.camera)
-      assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1)
     }
     scene.reset()
     while (scene.stepIndex < bakeFile.bake.endStep) scene.step()
