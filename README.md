@@ -4,7 +4,7 @@
 
 公開ページ: [Deterministic replay](https://novogrammer.github.io/deterministic-replay/)
 
-シーンは平行投影・ライトなしと、透視投影・ライトありの2種類を切り替えられる。各シーンは`SimulationScene`と`SceneSettings`をimplementsする独立したクラスとして、構築処理・物理設定・ベイクJSONを持つ。継承関係は設けない。
+シーンはSquare trayの平行投影・ライトなし、透視投影・ライトありと、TorusKnotを床の中央へ積み重ねる「Torus knot pile」の3種類を切り替えられる。Torus knot pileは斜め上からの透視投影と、床・パーツの薄い影で厚みを見せる。各シーンは`SimulationScene`と`SceneSettings`をimplementsする独立したクラスとして、構築処理・物理設定・ベイクJSONを持つ。継承関係は設けない。
 
 各シーンは`PhysicsDefinition`を通してWorld・Collider・投入方法を構築する。共通の`PhysicsSimulation`が固定ステップ、投入時刻、姿勢取得、リセットを管理し、球体以外の形状にも同じ再生・ベイクの仕組みを使える。
 

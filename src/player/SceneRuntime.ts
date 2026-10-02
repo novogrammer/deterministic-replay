@@ -26,6 +26,7 @@ export class SceneRuntime {
     this.renderer.setSize(1024, 1024, false)
     this.renderer.outputColorSpace = SRGBColorSpace
     this.renderer.toneMapping = NoToneMapping
+    this.renderer.shadowMap.enabled = true
     // Three's transfer-function types do not preserve the input's vec3 type.
     this.displayMaterial.colorNode = sRGBTransferEOTF(texture(this.frameTarget.texture).rgb) as ReturnType<typeof vec3>
   }
