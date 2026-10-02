@@ -1,3 +1,4 @@
+import type { QualityLevel } from 'mediabunny'
 import { PreviewPlayer } from './PreviewPlayer.ts'
 import type { PixelFrame } from '../rendering/PixelFrame.ts'
 
@@ -15,7 +16,7 @@ export interface SessionRuntime {
 }
 
 export interface FrameRecorder {
-  start(width: number, height: number, fps: number): Promise<void>
+  start(width: number, height: number, fps: number, quality: QualityLevel): Promise<void>
   addFrame(frame: PixelFrame, timestamp: number, duration: number): Promise<void>
   finish(): Promise<Blob>
   abort(): Promise<void>
@@ -89,18 +90,18 @@ export class SessionController {
     } finally { this.leave(wasPlaying) }
   }
 
-  record(fps: number, onProgress: (progress: number) => void): Promise<Blob> {
-    return this.track(() => this.recordFrames(fps, onProgress))
+  record(fps: number, onProgress: (progress: number) => void, quality: QualityLevel = 'high'): Promise<Blob> {
+    return this.track(() => this.recordFrames(fps, onProgress, quality))
   }
 
-  private async recordFrames(fps: number, onProgress: (progress: number) => void): Promise<Blob> {
+  private async recordFrames(fps: number, onProgress: (progress: number) => void, quality: QualityLevel): Promise<Blob> {
     if (!Number.isInteger(fps) || fps <= 0) throw new Error('Invalid frame rate.')
     this.cancelled = false
     const wasPlaying = await this.enter('record')
     try {
       this.runtime.reset()
       this.finalView = false
-      await this.recorder.start(this.runtime.canvas.width, this.runtime.canvas.height, fps)
+      await this.recorder.start(this.runtime.canvas.width, this.runtime.canvas.height, fps, quality)
       const frameCount = Math.ceil(this.runtime.duration * fps)
       for (let frame = 0; frame < frameCount; frame++) {
         this.checkCancelled()

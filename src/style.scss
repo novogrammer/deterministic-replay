@@ -85,6 +85,7 @@ button:disabled, select:disabled { cursor: wait; opacity: 0.45; }
 }
 
 .field {
+  &--wide { grid-column: 1 / -1; }
   &__label { display: block; font-size: 11px; color: #bac0c0; margin-bottom: 11px; }
   &__select { width: 100%; border: 1px solid #363d40; border-radius: 3px; padding: 11px 8px; background: #1a1e20; color: #d8dcd8; font-size: 11px; }
 }

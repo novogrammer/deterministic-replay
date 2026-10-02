@@ -199,7 +199,7 @@ TSLの`positionLocal`はインスタンス描画で更新されるため、最�
 
 canvasは出力動画と同じ正方形の描画解像度にする。初期値は1,024 × 1,024、512 × 512も選択可能。`renderer.setPixelRatio(1)`と`renderer.setSize(size, size, false)`を使い、画面への縮小表示はCSSで行う。画面リサイズや端末のDPRでは描画バッファを変えない。
 
-Mediabunnyの`Output`、`Mp4OutputFormat`、`VideoSampleSource`を使い、H.264 / MP4、30または60fps、high品質で出力する。エンコード可否を先に確認し、未対応なら理由を表示する。[Media sources](https://mediabunny.dev/guide/media-sources)、[Writing media files](https://mediabunny.dev/guide/writing-media-files)
+Mediabunnyの`Output`、`Mp4OutputFormat`、`VideoSampleSource`を使い、H.264 / MP4、30または60fpsで出力する。画質はUIから最低（`very-low`）、低（`low`）、標準（`medium`）、高（`high`）、最高（`very-high`）の5段階を選べ、初期値は高とする。録画開始時の選択値をSessionController経由でVideoRecorderへ渡し、`new Quality(qualityLevel)`でエンコードする。ビットレートは固定せず、容量は映像の内容とブラウザのエンコーダーに依存する。画質変更時は以前のダウンロードリンクを無効化する。エンコード可否を先に確認し、未対応なら理由を表示する。[Media sources](https://mediabunny.dev/guide/media-sources)、[Writing media files](https://mediabunny.dev/guide/writing-media-files)
 
 プレビュー・録画ともに同じRGBA8/sRGBのRenderTargetへ描画し、そのテクスチャをcanvasに表示する。録画時は`readRenderTargetPixelsAsync`でCPUへ読み出し、行のパディングと上下方向を補正した独立したRGBAバッファを`VideoSample`として渡す。GPUからCPUへの転送コストは生じるが、canvasの描画バッファの寿命に依存せず、フレームの画素を確定させられる。PNG化やbase64化は行わない。
 

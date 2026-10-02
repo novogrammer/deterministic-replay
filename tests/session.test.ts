@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { QualityLevel } from 'mediabunny'
 import { SessionController } from '../src/player/SessionController.ts'
 import type { PixelFrame } from '../src/rendering/PixelFrame.ts'
 import type { FrameRecorder, SessionRuntime } from '../src/player/SessionController.ts'
@@ -40,9 +41,14 @@ class FakeRuntime implements SessionRuntime {
 class FakeRecorder implements FrameRecorder {
   timestamps: number[] = []
   starts = 0
+  qualities: QualityLevel[] = []
   aborts = 0
   add: () => Promise<void> = async () => {}
-  start(): Promise<void> { this.starts++; return Promise.resolve() }
+  start(_width: number, _height: number, _fps: number, quality: QualityLevel): Promise<void> {
+    this.starts++
+    this.qualities.push(quality)
+    return Promise.resolve()
+  }
   async addFrame(_frame: PixelFrame, timestamp: number): Promise<void> { this.timestamps.push(timestamp); await this.add() }
   finish(): Promise<Blob> { return Promise.resolve(new Blob(['test'])) }
   abort(): Promise<void> { this.aborts++; return Promise.resolve() }
@@ -255,4 +261,14 @@ test('dispose rejects a queued draw without waiting for another renderer frame',
   await rejected
   assert.equal(runtime.animationLoop, null)
   assert.equal(runtime.draws.length, 0)
+})
+
+
+test('record forwards selected quality and defaults to high without changing frame times', async () => {
+  const { session, recorder, drive } = setup()
+  await drive(session.record(30, () => {}, 'medium'))
+  await drive(session.record(30, () => {}))
+  assert.deepEqual(recorder.qualities, ['medium', 'high'])
+  assert.deepEqual(recorder.timestamps, [0, 1 / 30, 2 / 30, 0, 1 / 30, 2 / 30])
+  await session.dispose()
 })

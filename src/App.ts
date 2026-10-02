@@ -1,3 +1,4 @@
+import type { QualityLevel } from 'mediabunny'
 import { Texture } from 'three/webgpu'
 import { SceneRegistry } from './scenes/SceneRegistry.ts'
 import { SceneRuntime } from './player/SceneRuntime.ts'
@@ -23,6 +24,7 @@ export class App {
   private readonly finishButton = element<HTMLButtonElement>('#finish')
   private readonly restartButton = element<HTMLButtonElement>('#restart')
   private readonly resolution = element<HTMLSelectElement>('#resolution')
+  private readonly quality = element<HTMLSelectElement>('#quality')
   private readonly exportButton = element<HTMLButtonElement>('#export')
   private readonly cancelButton = element<HTMLButtonElement>('#cancel')
   private readonly download = element<HTMLAnchorElement>('#download')
@@ -57,6 +59,7 @@ export class App {
     this.imageInput.addEventListener('change', () => { void this.loadImage().catch(error => this.showError(error)) })
     this.resolution.addEventListener('change', () => { void this.resize().catch(error => this.showError(error)) })
     element<HTMLSelectElement>('#fps').addEventListener('change', () => this.clearDownload())
+    this.quality.addEventListener('change', () => this.clearDownload())
     this.exportButton.addEventListener('click', () => { void this.exportVideo() })
     this.cancelButton.addEventListener('click', () => this.session.cancelRecording())
     window.addEventListener('pagehide', () => { void this.dispose() }, { once: true })
@@ -124,10 +127,11 @@ export class App {
     this.cancelButton.hidden = false
     try {
       const fps = Number(element<HTMLSelectElement>('#fps').value)
+      const quality = this.quality.value as QualityLevel
       const blob = await this.session.record(fps, value => {
         this.progress.value = value
         this.status.textContent = `MP4を書き出し中 · ${Math.round(value * 100)}%`
-      })
+      }, quality)
       this.downloadUrl = URL.createObjectURL(blob)
       this.download.href = this.downloadUrl
       this.download.download = `${this.runtime.sceneId}-${this.runtime.outputSize}-${fps}fps.mp4`

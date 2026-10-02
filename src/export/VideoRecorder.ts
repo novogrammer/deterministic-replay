@@ -1,4 +1,5 @@
 import { BufferTarget, VideoSample, VideoSampleSource, Mp4OutputFormat, Output, Quality, canEncodeVideo } from 'mediabunny'
+import type { QualityLevel } from 'mediabunny'
 import type { PixelFrame } from '../rendering/PixelFrame.ts'
 
 /** Encodes submitted frames. Frame times and scene updates belong to the session. */
@@ -7,9 +8,9 @@ export class VideoRecorder {
   private source: VideoSampleSource | null = null
   private target: BufferTarget | null = null
 
-  async start(width: number, height: number, fps: number): Promise<void> {
+  async start(width: number, height: number, fps: number, qualityLevel: QualityLevel = 'high'): Promise<void> {
     if (this.output) throw new Error('Recording is already active.')
-    const quality = new Quality('high')
+    const quality = new Quality(qualityLevel)
     if (!await canEncodeVideo('avc', { width, height, quality, frameRate: fps })) {
       throw new Error('このブラウザは指定解像度のH.264書き出しに対応していません。別のブラウザまたは解像度をお試しください。')
     }

@@ -66,6 +66,16 @@
             <div class="panel__fields">
               <div class="field"><label class="field__label" for="resolution">解像度</label><select class="field__select" id="resolution" data-control disabled><option value="1024">1024 × 1024</option><option value="512">512 × 512</option></select></div>
               <div class="field"><label class="field__label" for="fps">フレームレート</label><select class="field__select" id="fps" data-control disabled><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+              <div class="field field--wide">
+                <label class="field__label" for="quality">画質</label>
+                <select class="field__select" id="quality" data-control disabled>
+                  <option value="very-low">最低</option>
+                  <option value="low">低</option>
+                  <option value="medium">標準</option>
+                  <option value="high" selected>高</option>
+                  <option value="very-high">最高</option>
+                </select>
+              </div>
             </div>
             <button class="button button--primary" id="export" data-control disabled>MP4を書き出す <span aria-hidden="true">↗</span></button>
             <progress class="panel__progress" id="progress" value="0" max="1" aria-label="動画出力の進捗" hidden></progress>
