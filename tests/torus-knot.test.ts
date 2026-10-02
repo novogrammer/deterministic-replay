@@ -21,9 +21,12 @@ test('runtime-generated TorusKnot hulls reset and reconstruct deterministically,
     assert.deepEqual(mesh.geometry.getAttribute('position').array, parts(second).geometry.getAttribute('position').array)
     assert.equal(mesh.geometry.hasAttribute('finalColumn0'), false)
     assert.throws(() => first.showFinal(), /未ベイク/)
+    let staticColliders = 0
     first.world.forEachCollider(collider => {
       if (collider.parent()) assert.equal(collider.shape.type, RAPIER.ShapeType.ConvexPolyhedron)
+      else staticColliders++
     })
+    assert.equal(staticColliders, 1, 'only the floor is static; no surrounding walls')
     for (let step = 0; step < 200; step++) { first.step(); second.step() }
     first.updateView(0.5); second.updateView(0.5)
     const intermediate = mesh.instanceMatrix.array.slice()
@@ -65,7 +68,7 @@ test('forward completion matches saved final view; camera, projection and shadow
       const position = new Vector3(), rotation = new Quaternion(), scale = new Vector3()
       matrix.fromArray(bakeFile.bake.finalMatrices, id * 16).decompose(position, rotation, scale)
       assert.ok(scale.distanceTo(new Vector3(1, 1, 1)) < 0.000001)
-      assert.ok(position.y > 0 && Math.abs(position.x) < 4 && Math.abs(position.z) < 4)
+      assert.ok(position.y > 0 && Math.abs(position.x) < scene.floorSize / 2 && Math.abs(position.z) < scene.floorSize / 2)
       const projected = position.project(scene.camera)
       assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1)
     }

@@ -42,12 +42,9 @@ export class TorusKnotPileScene implements SimulationScene, SceneSettings, Physi
   readonly linearDamping = 0.18
   readonly angularDamping = 0.55
   readonly imageRegionSize = 0.62
+  readonly floorSize = 20
   readonly colliderBoxes: readonly BoxDefinition[] = [
-    { position: [0, -0.1, 0], halfSize: [4, 0.1, 4] },
-    { position: [-4.1, 4, 0], halfSize: [0.1, 4, 4.2] },
-    { position: [4.1, 4, 0], halfSize: [0.1, 4, 4.2] },
-    { position: [0, 4, -4.1], halfSize: [4, 4, 0.1] },
-    { position: [0, 4, 4.1], halfSize: [4, 4, 0.1] },
+    { position: [0, -0.1, 0], halfSize: [this.floorSize / 2, 0.1, this.floorSize / 2] },
   ]
   private readonly geometry = new TorusKnotGeometry(this.knotRadius, this.tubeRadius,
     this.tubularSegments, this.radialSegments, this.knotP, this.knotQ)
@@ -192,7 +189,7 @@ export class TorusKnotPileScene implements SimulationScene, SceneSettings, Physi
     content.add(parts)
 
     const floorMaterial = new MeshStandardNodeMaterial({ color: '#343c43', roughness: 0.9 })
-    const floor = new Mesh(new BoxGeometry(8, 0.2, 8), floorMaterial)
+    const floor = new Mesh(new BoxGeometry(this.floorSize, 0.2, this.floorSize), floorMaterial)
     floor.position.y = -0.1
     floor.receiveShadow = true
     content.add(floor)

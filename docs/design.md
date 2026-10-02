@@ -65,14 +65,14 @@ Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。
 
 ## 三つ目のシーン: Torus knot pile
 
-床の中央へTorusKnotを落とし、山状に積み重ねる。固定の透視投影カメラで斜め上から眺め、DirectionalLightとHemisphereLight、MeshStandardNodeMaterialで描画する。床とパーツは影を受け、パーツは影を落とす。穴とパーツ間の隙間は残り、入力画像で埋めない。
+広い床の中央へTorusKnotを落とし、山状に積み重ねる。周囲に衝突壁を設けず、パーツは自然に転がって広がる。固定の透視投影カメラで斜め上から眺め、DirectionalLightとHemisphereLight、MeshStandardNodeMaterialで描画する。床とパーツは影を受け、パーツは影を落とす。穴とパーツ間の隙間は残り、入力画像で埋めない。
 
 | 設定 | 値 |
 | --- | --- |
 | シーンID / パーツ数 | torus-knot-pile / 180 |
 | Geometry | TorusKnotGeometry(0.28, 0.09, 96, 12, 2, 3) |
 | スケール | Geometryが実寸、インスタンスのスケールは1 |
-| 床 / 衝突壁 | 8 × 8、床面y=0。外周の衝突壁は描画しない |
+| 床 / 衝突壁 | 20 × 20、床面y=0。外周の衝突壁は設けない |
 | 投入位置 | xz=(-0.65,-0.65)、(0.65,-0.65)、(0,0.65)、各軸±0.1のばらつき |
 | 投入高さ / 間隔 | y=7〜7.18、3個ずつ10ステップ間隔 |
 | 初速 / 回転 | 下向き0.2、固定シードのQuaternionと各軸±0.5の角速度 |
@@ -83,13 +83,13 @@ Viteのルートは`src/`、静的アセットは`public/`、出力は`dist/`。
 | 画像領域 | 画面中央の正方形、画面幅の62％ |
 | 影 | PCF、2048 × 2048、強度0.35、normalBias 0.025 |
 | 終了条件 / 上限 | 全投入後に全Bodyがsleeping / 1,800ステップ |
-| ベイク終了 / 保持 | 838ステップ（約13.97秒） / 2秒、1周期約15.97秒 |
+| ベイク終了 / 保持 | 991ステップ（約16.52秒） / 2秒、1周期約18.52秒 |
 
 山を中央へ大きく収めるため、初期案のカメラ位置(10,11,14)、注視点(0,1.5,0)、画像幅70％から上記へ調整した。カメラは再生中に動かさない。画像の上端など、山の表面が存在しない領域には断片が現れない。
 
 TorusKnotPileSceneは既存の構築契約を使う独立したクラスで、専用物理クラスは設けない。Geometryのposition属性をFloat32Arrayとしてメモリに保持し、createBody()でRapierのconvexHullへ渡す。凸包では形状の穴を埋めて衝突判定する。頂点のJSON保存や生成スクリプトは作らず、Nodeのベイクとブラウザで同じ構築処理を使う。
 
-自身のディレクトリからbake.jsonをimportする。settingsKeyには形状のパラメーター・分割数、個数、シード、投入位置・高さ・間隔、重力・solver・摩擦・反発・damping・CCD、衝突壁、終了上限を含める。固定の物理ロジックを変更するときはrevisionを更新する。UV・途中姿勢・凸包頂点はベイクJSONに含めない。
+自身のディレクトリからbake.jsonをimportする。settingsKeyには形状のパラメーター・分割数、個数、シード、投入位置・高さ・間隔、重力・solver・摩擦・反発・damping・CCD、床Collider、終了上限を含める。固定の物理ロジックを変更するときはrevisionを更新する。UV・途中姿勢・凸包頂点はベイクJSONに含めない。
 
 SceneRuntimeはshadowMapを有効化し、影を使うライトとMeshはシーン自身が設定する。プレビューと録画は同じRenderTargetへ影を含めて描画する。シーン切り替え時はWorld、Geometry、Material、InstancedMeshに加えてLightShadowのリソースも解放する。既存のSquare trayには影を落とすライトを追加しない。
 
