@@ -1,19 +1,19 @@
 import RAPIER from '@dimforge/rapier3d-deterministic-compat'
-import { settingsKey } from '../scenes/SceneData.ts'
 import type { BakeMetadata, SceneSettings } from '../scenes/SceneData.ts'
 import { PhysicsSimulation } from '../simulation/PhysicsSimulation.ts'
+import type { PhysicsDefinition } from '../simulation/PhysicsSimulation.ts'
 
 export class ReplayData {
   readonly metadata: BakeMetadata | null
   readonly endStep: number
-  readonly spawnSteps: number[]
+  readonly spawnSteps: readonly number[]
   readonly duration: number
   readonly simulation: PhysicsSimulation
   readonly previous: Float32Array
   readonly next: Float32Array
   private frame = 0
 
-  private constructor(scene: SceneSettings, metadata: BakeMetadata | null) {
+  private constructor(scene: SceneSettings & PhysicsDefinition, metadata: BakeMetadata | null) {
     this.metadata = metadata
     this.endStep = metadata?.endStep ?? scene.maxSteps
     this.duration = this.endStep * scene.timeStep
@@ -21,20 +21,22 @@ export class ReplayData {
     this.spawnSteps = this.simulation.spawnSteps
     this.previous = new Float32Array(scene.count * 7)
     this.next = new Float32Array(scene.count * 7)
-    this.reset()
+    try { this.reset() }
+    catch (error) { this.simulation.dispose(); throw error }
   }
 
-  static async fromBake(scene: SceneSettings, metadata: BakeMetadata | null): Promise<ReplayData> {
+  static async fromBake(scene: SceneSettings & PhysicsDefinition, metadata: BakeMetadata | null): Promise<ReplayData> {
     await PhysicsSimulation.ready
+    const spawnSteps = scene.spawnSteps
     if (metadata && (metadata.formatVersion !== 1 || metadata.sceneId !== scene.id
-      || metadata.sceneRevision !== scene.revision || metadata.settingsKey !== settingsKey(scene)
+      || metadata.sceneRevision !== scene.revision || metadata.settingsKey !== scene.settingsKey
       || metadata.rapierVersion !== RAPIER.version() || metadata.timeStep !== scene.timeStep
       || metadata.count !== scene.count || !metadata.settled
       || !Number.isInteger(metadata.endStep) || metadata.endStep < 1 || metadata.endStep > scene.maxSteps
       || !Array.isArray(metadata.finalMatrices) || metadata.finalMatrices.length !== scene.count * 16
       || !metadata.finalMatrices.every(Number.isFinite)
       || !Array.isArray(metadata.spawnSteps) || metadata.spawnSteps.length !== scene.count
-      || metadata.spawnSteps.some((step, id) => step !== Math.floor(id / scene.batchSize) * scene.spawnEverySteps))) {
+      || metadata.spawnSteps.some((step, id) => step !== spawnSteps[id]))) {
       throw new Error('シーン設定とベイクデータが一致しません。再ベイクしてください。')
     }
     return new ReplayData(scene, metadata)

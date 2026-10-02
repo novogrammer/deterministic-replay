@@ -5,17 +5,10 @@ export interface SceneSettings {
   readonly revision: number
   readonly seed: number
   readonly count: number
-  readonly radius: number
-  readonly width: number
-  readonly depth: number
-  readonly cameraHalfSize: number
+  readonly settingsKey: string
   readonly timeStep: number
-  readonly batchSize: number
-  readonly spawnEverySteps: number
   readonly maxSteps: number
   readonly holdSeconds: number
-  readonly colliderBoxes: readonly BoxDefinition[]
-  readonly visibleBoxes: readonly BoxDefinition[]
 }
 
 export interface BoxDefinition {
@@ -40,14 +33,4 @@ export interface BakeMetadata {
 export interface BakeFile {
   formatVersion: 1
   bake: BakeMetadata | null
-}
-
-export function settingsKey(scene: SceneSettings): string {
-  return JSON.stringify({
-    revision: scene.revision, seed: scene.seed, count: scene.count,
-    radius: scene.radius, width: scene.width, depth: scene.depth,
-    timeStep: scene.timeStep, batchSize: scene.batchSize,
-    spawnEverySteps: scene.spawnEverySteps, maxSteps: scene.maxSteps,
-    colliderBoxes: scene.colliderBoxes,
-  })
 }

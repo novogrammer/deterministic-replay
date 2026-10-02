@@ -5,7 +5,6 @@ import RAPIER from '@dimforge/rapier3d-deterministic-compat'
 import { SquareTrayScene } from '../src/scenes/square-tray/SquareTrayScene.ts'
 import bakeFile from '../src/scenes/square-tray/bake.json' with { type: 'json' }
 import { SceneRegistry } from '../src/scenes/SceneRegistry.ts'
-import { settingsKey } from '../src/scenes/SceneData.ts'
 import { PhysicsSimulation } from '../src/simulation/PhysicsSimulation.ts'
 
 await PhysicsSimulation.ready
@@ -37,7 +36,7 @@ test('reset reproduces intermediate poses and spawning without saved trajectory'
 
 test('forward simulation reaches baked final matrices on each replay', async () => {
   const metadata = bakeFile.bake
-  assert.equal(metadata.settingsKey, settingsKey(scene))
+  assert.equal(metadata.settingsKey, scene.settingsKey)
   assert.equal(metadata.rapierVersion, RAPIER.version())
   assert.equal(metadata.sceneRevision, scene.revision)
   assert.equal(metadata.finalMatrices.length, scene.count * 16)
@@ -74,7 +73,10 @@ test('scene registry uses independent factories; physics changes invalidate sett
   try {
     assert.notEqual(first.scene, second.scene)
     assert.notEqual(first.world, second.world)
-    assert.notEqual(settingsKey(scene), settingsKey({ ...scene, seed: 1234 }))
+    await assert.rejects(SquareTrayScene.create({
+      formatVersion: 1,
+      bake: { ...bakeFile.bake, settingsKey: 'stale physics settings' },
+    }), /一致しません/)
     assert.throws(() => new SceneRegistry([original, original]), /Duplicate/)
   } finally { first.dispose(); second.dispose() }
 })

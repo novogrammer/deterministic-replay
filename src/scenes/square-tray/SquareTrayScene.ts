@@ -6,12 +6,13 @@ import {
 } from 'three/webgpu'
 import { attribute, instancedBufferAttribute, mat4, normalView, texture, uniform, varying, vec4 } from 'three/tsl'
 import type { BakeFile, BakeMetadata, BoxDefinition, SceneSettings } from '../SceneData.ts'
-import { settingsKey } from '../SceneData.ts'
+import type { PhysicsDefinition } from '../../simulation/PhysicsSimulation.ts'
+import type { SeededRandom } from '../../simulation/SeededRandom.ts'
 import type { SimulationScene } from '../SimulationScene.ts'
 import { ReplayData } from '../../replay/ReplayData.ts'
 import bakeData from './bake.json' with { type: 'json' }
 
-export class SquareTrayScene implements SimulationScene, SceneSettings {
+export class SquareTrayScene implements SimulationScene, SceneSettings, PhysicsDefinition {
   readonly id: string = 'square-tray'
   readonly title: string = 'Square tray · 平行投影'
   readonly scene = new Scene()
@@ -65,6 +66,44 @@ export class SquareTrayScene implements SimulationScene, SceneSettings {
       scene.build()
       return scene
     } catch (error) { scene.dispose(); throw error }
+  }
+
+  get settingsKey(): string {
+    return JSON.stringify({
+      revision: this.revision, seed: this.seed, count: this.count,
+      radius: this.radius, width: this.width, depth: this.depth,
+      timeStep: this.timeStep, batchSize: this.batchSize,
+      spawnEverySteps: this.spawnEverySteps, maxSteps: this.maxSteps,
+      colliderBoxes: this.colliderBoxes,
+    })
+  }
+
+  get spawnSteps(): readonly number[] {
+    return Array.from({ length: this.count }, (_, id) =>
+      Math.floor(id / this.batchSize) * this.spawnEverySteps)
+  }
+
+  createWorld(): RAPIER.World {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 })
+    world.integrationParameters.numSolverIterations = 8
+    for (const box of this.colliderBoxes) {
+      world.createCollider(RAPIER.ColliderDesc.cuboid(...box.halfSize)
+        .setTranslation(...box.position).setFriction(0.6).setRestitution(0))
+    }
+    return world
+  }
+
+  createBody(world: RAPIER.World, id: number, random: SeededRandom): RAPIER.RigidBody {
+    const lane = id % this.batchSize
+    const x = -this.width / 2 + 0.5 + lane * ((this.width - 1) / (this.batchSize - 1))
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(x + (random.next() - 0.5) * 0.16, 5.4 + random.next() * 0.18, 0)
+      .setLinvel((random.next() - 0.5) * 0.4, -0.2, 0)
+      .setAngvel({ x: random.next() - 0.5, y: random.next() - 0.5, z: random.next() - 0.5 })
+      .setLinearDamping(0.12).setAngularDamping(0.4).setCcdEnabled(true))
+    world.createCollider(RAPIER.ColliderDesc.ball(this.radius)
+      .setDensity(1).setFriction(0.45).setRestitution(0.08), body)
+    return body
   }
 
   get world(): RAPIER.World { return this.replay.simulation.world }
@@ -189,7 +228,7 @@ export class SquareTrayScene implements SimulationScene, SceneSettings {
       }
       const metadata: BakeMetadata = {
         formatVersion: 1, sceneId: settings.id, sceneRevision: settings.revision,
-        settingsKey: settingsKey(settings), rapierVersion: RAPIER.version(),
+        settingsKey: settings.settingsKey, rapierVersion: RAPIER.version(),
         count: this.count, timeStep: this.timeStep, endStep: simulation.step,
         settled: true, spawnSteps: [...simulation.spawnSteps], finalMatrices,
       }
