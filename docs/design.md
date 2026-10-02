@@ -172,3 +172,11 @@ OGP画像は`public/images/ogp.png`（1200×630）。Square trayの完成状態�
 `.github/workflows/deploy.yaml`が`main`へのpushまたは手動実行でビルドし、`dist/`をGitHub Pagesへ公開する。READMEに公開ページへのリンクを置き、公開ページのフッターに[GitHubリポジトリ](https://github.com/novogrammer/deterministic-replay)へのテキストリンクを置く。
 
 今後は別の容器・投入方式、カメラ演出、Worker化、大きな出力の保存方法、対応ブラウザの範囲を検討する。非正方形の画像は現状拒否し、クロップは実装しない。
+
+### SNS向け動画の色設定と投稿後の変換
+
+現時点では動画の出力設定を維持する。入力のVideoSampleはRGBA/sRGB、BT.709原色、RGB行列、フルレンジとする。確認したMP4（`tmp/scene-refactor-check/result.mp4`）はH.264 High、8bit YUV 4:2:0、`pix_fmt=yuvj420p`、`color_range=pc`、BT.709原色・行列、sRGB伝達特性だった。ブラウザやエンコーダーが変わった場合の出力は別途確認する。
+
+今後はXなどへのアップロード可否に加え、投稿前後の色・レンジ・解像度・画質を比較する。X側の再エンコードを避けられることは保証しない。SNSとの互換性を優先する候補として、初回の書き出しからリミテッドレンジのYUV 4:2:0とBT.709伝達特性へ揃える方法を検討する。変更時はsRGBの入力画素を正しく変換し、メタ情報だけの変更や、生成済みMP4の不要な再エンコードは避ける。
+
+[X公式の広告仕様](https://help.x.com/en/business-and-advertising/creative-ad-specifications)はMP4/MOV、H.264、4:2:0を推奨するが、フル／リミテッドレンジの指定はない。[YouTube公式のアップロード設定](https://support.google.com/youtube/answer/1722171?hl=ja)はSDRのBT.709を推奨し、フルレンジをリミテッドレンジへ、sRGB伝達特性をBT.709へ変換すると説明している。YouTubeの仕様をXの仕様とは扱わず、一般的な互換性を検討する参考とする。
